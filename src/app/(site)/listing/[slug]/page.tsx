@@ -1,4 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
+import { VISUAL_PREVIEW, PREVIEW_LISTINGS } from "@/lib/visual-preview";
+import { PreviewDetail } from "@/components/preview/preview-detail";
 import { AlertTriangle, ArrowLeftRight, CalendarClock, Eye, Info, MapPin, ShieldAlert, ShieldCheck, TrendingDown } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -32,6 +34,7 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  if (VISUAL_PREVIEW) { const demo = PREVIEW_LISTINGS.find((l) => l.slug === slug); return { title: demo?.title ?? "إعلان تجريبي", robots: { index: false } }; }
   const data = await getListingBySlug(slug);
   if (!data || !["active", "sold"].includes(data.listing.status)) return { title: "إعلان غير متاح", robots: { index: false } };
   const l = data.listing;
@@ -48,6 +51,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ListingPage({ params }: Props) {
+  if (VISUAL_PREVIEW) return <PreviewDetail slug={(await params).slug} />;
   const { slug } = await params;
   const [data, user] = await Promise.all([getListingBySlug(slug), getCurrentUser()]);
   if (!data) notFound();
