@@ -1,4 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
+import { VISUAL_PREVIEW } from "@/lib/visual-preview";
+import { PreviewHome } from "@/components/preview/preview-home";
 import { Megaphone } from "lucide-react";
 import Link from "next/link";
 import { CategoryGrid } from "@/components/home/category-grid";
@@ -16,6 +18,7 @@ import { getFavoriteIdSet, getLatestListings } from "@/server/queries/listings";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  if (VISUAL_PREVIEW) return <PreviewHome />;
   const [user, categories, counts, verified, latest, swaps, banner] = await Promise.all([
     getCurrentUser(),
     getCategoryTree(),
