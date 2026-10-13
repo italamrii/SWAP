@@ -58,3 +58,31 @@ jobs:
       - name: Server log on failure
         if: failure()
         run: cat server.log || true
+
+  preview:
+    # Database-free visual preview, as deployed to the swap-preview Vercel project.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SWAP_VISUAL_PREVIEW: "1"
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build without a database
+        run: pnpm build
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Preview E2E
+        run: |
+          pnpm start > preview.log 2>&1 &
+          npx wait-on -t 60000 http://localhost:3100
+          pnpm test:e2e:preview
+      - name: Server log on failure
+        if: failure()
+        run: cat preview.log || true

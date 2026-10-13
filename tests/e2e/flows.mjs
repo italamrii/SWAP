@@ -36,11 +36,13 @@ after(async () => {
 });
 
 describe("public browsing", () => {
-  it("home renders hero, categories and listings", async () => {
+  it("home is marketplace-first: listings inside the first desktop viewport", async () => {
     const p = await newPage();
     await p.goto(BASE);
-    assert.match(await p.locator("h1").first().innerText(), /بيع وبدّل/);
-    assert.ok((await p.locator("article").count()) >= 8);
+    assert.match(await p.locator("h1").first().innerText(), /سوق الكمبيوتر/);
+    assert.ok((await p.locator('[data-testid="listing-card"]').count()) >= 8);
+    const top = await p.locator('[data-testid="listing-card"]').first().evaluate((el) => el.getBoundingClientRect().top);
+    assert.ok(top < 900, `first listing starts at ${top}px — must be visible without scrolling`);
   });
   it("category filters narrow results via structured specs", async () => {
     const p = await newPage();
@@ -71,6 +73,68 @@ describe("public browsing", () => {
   it("sitemap and robots are served", async () => {
     assert.match(await (await fetch(`${BASE}/sitemap.xml`)).text(), /<urlset/);
     assert.match(await (await fetch(`${BASE}/robots.txt`)).text(), /Disallow: \/admin/);
+  });
+});
+
+describe("header & navigation drawer", () => {
+  it("desktop header has search, city, category bar and post button", async () => {
+    const p = await newPage();
+    await p.goto(BASE);
+    const header = p.locator('[data-testid="site-header"]');
+    await header.locator('input[role="combobox"]').waitFor();
+    await header.locator('button[aria-label^="المدينة"]').waitFor();
+    assert.equal(await header.locator('nav[aria-label="الأقسام"] ul a').count(), 10);
+    await header.getByRole("link", { name: "أضف إعلان" }).waitFor();
+    const h = await header.evaluate((el) => el.getBoundingClientRect().height);
+    assert.ok(h <= 112, `header too tall: ${h}`);
+  });
+  it("category bar marks the active category", async () => {
+    const p = await newPage();
+    await p.goto(`${BASE}/browse/gpus`);
+    assert.equal(await p.locator('[data-testid="site-header"] a[aria-current="page"]').first().innerText(), "كروت شاشة");
+  });
+  it("drawer opens, traps focus, highlights the current page and closes with Escape", async () => {
+    const p = await newPage(390);
+    await p.goto(`${BASE}/browse?verified=1`);
+    await p.click('[data-testid="drawer-trigger"]');
+    const drawer = p.locator('[data-testid="nav-drawer"]');
+    await drawer.waitFor();
+    for (const g of ["السوق", "حسابي", "الثقة والدعم", "المنصة"]) await drawer.getByRole("heading", { name: g }).waitFor();
+    assert.equal(await drawer.locator('a[aria-current="page"]').first().innerText(), "الإعلانات الموثّقة");
+    await p.keyboard.press("Tab");
+    assert.ok(await p.evaluate(() => !!document.activeElement?.closest('[data-testid="nav-drawer"]')), "focus stays inside drawer");
+    await p.keyboard.press("Escape");
+    await drawer.waitFor({ state: "detached" });
+    assert.equal(await p.evaluate(() => document.activeElement?.getAttribute("data-testid")), "drawer-trigger");
+  });
+  it("every drawer link responds without errors", async () => {
+    const p = await newPage(390);
+    await p.goto(BASE);
+    await p.click('[data-testid="drawer-trigger"]');
+    const hrefs = await p.locator('[data-testid="nav-drawer"] a[href^="/"]').evaluateAll((as) => [...new Set(as.map((a) => a.getAttribute("href")))]);
+    assert.ok(hrefs.length >= 20, `only ${hrefs.length} links`);
+    for (const h of hrefs) {
+      const r = await fetch(BASE + h, { redirect: "manual" });
+      assert.ok([200, 307, 308].includes(r.status), `${h} → ${r.status}`);
+    }
+  });
+  it("city selection is applied to search", async () => {
+    const p = await newPage();
+    await p.goto(BASE);
+    await p.locator('[data-testid="site-header"] button[aria-label^="المدينة"]').click();
+    await p.locator('[role=option]:has-text("الرياض")').click();
+    const input = p.locator('[data-testid="site-header"] input[role="combobox"]');
+    await input.fill("RTX");
+    await input.press("Enter");
+    await p.waitForURL(/\/browse\?q=RTX&city=riyadh/);
+  });
+  it("browse supports a dense list view that keeps filters", async () => {
+    const p = await newPage();
+    await p.goto(`${BASE}/browse/gpus?f.mined=no`);
+    await p.click('button[aria-label="عرض قائمة"]');
+    await p.waitForURL(/view=list/);
+    assert.match(p.url(), /f\.mined=no/);
+    assert.ok((await p.locator('[data-testid="listing-card"]').count()) > 0);
   });
 });
 
@@ -192,9 +256,10 @@ describe("inspection & verification", () => {
 });
 
 describe("responsive & accessibility smoke", () => {
-  const pages = ["/", "/browse", "/browse/laptops", "/how-it-works", "/verification", "/safety", "/terms", "/sign-in"];
-  it("no horizontal overflow at 375px, single h1, rtl document", async () => {
-    const p = await newPage(375);
+  const pages = ["/", "/browse", "/browse/laptops", "/browse/gpus?view=list", "/help", "/how-it-works", "/verification", "/safety", "/terms", "/sign-in"];
+  it("no horizontal overflow at 320–1440px, single h1, rtl document", async () => {
+    for (const width of [320, 375, 390, 768, 1024, 1440]) {
+    const p = await newPage(width);
     for (const path of pages) {
       await p.goto(BASE + path);
       const m = await p.evaluate(() => {
@@ -205,11 +270,13 @@ describe("responsive & accessibility smoke", () => {
           .map((el) => el.tagName + ":" + (el.textContent ?? "").trim().slice(0, 30));
         return { sw: document.documentElement.scrollWidth, w: innerWidth, h1: document.querySelectorAll("h1").length, dir: document.documentElement.dir, lang: document.documentElement.lang, clipped };
       });
-      assert.ok(m.sw <= m.w + 1, `${path} overflows: ${m.sw} > ${m.w}`);
-      assert.deepEqual(m.clipped, [], `${path} has content outside the viewport`);
-      assert.equal(m.h1, 1, `${path} should have exactly one h1`);
+      assert.ok(m.sw <= m.w + 1, `${path} @${width} overflows: ${m.sw} > ${m.w}`);
+      assert.deepEqual(m.clipped, [], `${path} @${width} has content outside the viewport`);
+      assert.equal(m.h1, 1, `${path} @${width} should have exactly one h1`);
       assert.equal(m.dir, "rtl");
       assert.equal(m.lang, "ar");
+    }
+    await p.context().close();
     }
   });
   it("account pages fit on mobile", async () => {
