@@ -92,13 +92,13 @@ export function BrowseLayout({ params, filters, category, allCategories, categor
         <FilterPanel {...panelProps} header={<CategoryNav categories={allCategories} counts={categoryCounts} activeSlug={category?.slug} params={filters} />} />
         <div className="min-w-0 flex-1">
           <div className="sticky top-14 z-20 -mx-4 mb-3 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-4 py-2 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <Suspense fallback={null}><MobileFilterButton {...panelProps} /></Suspense>
               <p className="hidden text-[13px] text-muted-foreground sm:block">{result.total > 0 ? `عرض ${(filters.page - 1) * 24 + 1}–${Math.min(filters.page * 24, result.total)} من ${result.total}` : ""}</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center justify-end gap-2">
               <Suspense fallback={null}><ViewToggle /></Suspense>
-              <Suspense fallback={null}><SortSelect /></Suspense>
+              <div className="min-w-0 sm:min-w-40"><Suspense fallback={null}><SortSelect /></Suspense></div>
             </div>
           </div>
           {chips.length > 0 && <div className="mb-3"><Suspense fallback={null}><ActiveFilterChips chips={chips} /></Suspense></div>}

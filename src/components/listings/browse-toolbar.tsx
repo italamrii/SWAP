@@ -9,7 +9,7 @@ import { useUrlFilters } from "./use-url-filters";
 export function SortSelect() {
   const { params, update } = useUrlFilters();
   return (
-    <NativeSelect aria-label="الترتيب" value={params.get("sort") ?? "newest"} onChange={(e) => update({ sort: e.target.value === "newest" ? null : e.target.value })} className="h-10 w-auto min-w-40">
+    <NativeSelect aria-label="الترتيب" value={params.get("sort") ?? "newest"} onChange={(e) => update({ sort: e.target.value === "newest" ? null : e.target.value })} className="h-10 w-full min-w-0">
       {Object.entries(SORTS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
     </NativeSelect>
   );
