@@ -21,21 +21,39 @@ const STATUS: Record<string, { label: string; v: "warning" | "verified" | "dange
   expired: { label: "منتهي", v: "neutral" },
 };
 
-export default async function OffersPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function OffersPage({ searchParams }: { searchParams: Promise<{ tab?: string; type?: string }> }) {
   const user = await requireUser("/account/offers");
-  const [{ tab = "received" }, all] = await Promise.all([searchParams, getOffersFor(user.id)]);
-  const items = all.filter((o) => o.direction === (tab === "sent" ? "sent" : "received"));
+  const [{ tab = "received", type }, all] = await Promise.all([searchParams, getOffersFor(user.id)]);
+  const kind = type === "price" || type === "swap" ? type : undefined;
+  const items = all.filter((o) => o.direction === (tab === "sent" ? "sent" : "received") && (!kind || o.type === kind));
+  const qs = (next: { tab?: string; type?: string }) => {
+    const sp = new URLSearchParams();
+    const t = next.tab ?? tab;
+    const k = "type" in next ? next.type : kind;
+    if (t !== "received") sp.set("tab", t);
+    if (k) sp.set("type", k);
+    return sp.size ? `/account/offers?${sp}` : "/account/offers";
+  };
   const pendingReceived = all.filter((o) => o.direction === "received" && o.status === "pending").length;
 
   return (
     <div className="space-y-6">
       <PageHeader title="العروض والبدل" description="عروض الأسعار واقتراحات البدل على إعلاناتك، والعروض اللي قدّمتها." />
+      <div className="flex flex-wrap items-center gap-3">
       <div className="inline-flex rounded-lg bg-surface-2 p-1" role="tablist">
         {[{ k: "received", l: "المستلمة", n: pendingReceived }, { k: "sent", l: "المرسلة", n: 0 }].map((t) => (
-          <Link key={t.k} href={`/account/offers?tab=${t.k}`} role="tab" aria-selected={tab === t.k} className={cn("inline-flex h-8 items-center gap-1.5 rounded-md px-4 text-sm font-medium", tab === t.k ? "bg-surface shadow-xs" : "text-muted-foreground")}>
+          <Link key={t.k} href={qs({ tab: t.k })} role="tab" aria-selected={tab === t.k} className={cn("inline-flex h-8 items-center gap-1.5 rounded-md px-4 text-sm font-medium", tab === t.k ? "bg-surface shadow-xs" : "text-muted-foreground")}>
             {t.l}{t.n > 0 && <span className="rounded-full bg-primary px-1.5 text-[11px] text-primary-foreground">{t.n}</span>}
           </Link>
         ))}
+      </div>
+      <div className="flex gap-1.5" aria-label="نوع العرض">
+        {[{ k: undefined, l: "الكل" }, { k: "price", l: "عروض الأسعار" }, { k: "swap", l: "عروض البدل" }].map((t) => (
+          <Link key={t.l} href={qs({ type: t.k })} aria-current={kind === t.k ? "page" : undefined} className={cn("inline-flex h-8 items-center rounded-full border px-3 text-[13px] font-medium", kind === t.k ? "border-primary bg-primary-soft text-primary-ink" : "border-border text-muted-foreground hover:text-foreground")}>
+            {t.l}
+          </Link>
+        ))}
+      </div>
       </div>
       {items.length === 0 ? (
         <EmptyState icon={Inbox} title={tab === "sent" ? "ما قدّمت أي عروض بعد" : "لا توجد عروض على إعلاناتك"} description={tab === "sent" ? "من صفحة أي إعلان، اضغط «قدّم عرض سعر» أو «اقترح بدل»." : "فعّل «قابل للتفاوض» و«أقبل البدل» في إعلاناتك لتصلك عروض أكثر."} />

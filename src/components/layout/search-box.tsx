@@ -1,10 +1,12 @@
 "use client";
 
 import { Loader2, Search, TrendingUp } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { formatSAR } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { CityPicker } from "./city-picker";
+import { useCity } from "./use-city";
 
 type Suggestion = { slug: string; title: string; price: number; categoryNameAr: string };
 type CatSuggestion = { slug: string; nameAr: string };
@@ -12,9 +14,32 @@ type CatSuggestion = { slug: string; nameAr: string };
 const POPULAR = ["RTX 4070", "ماك بوك", "PS5", "7800X3D", "شاشة 240Hz", "DDR5"];
 
 /** Search with live suggestions (listings + categories) and full keyboard support. */
-export function SearchBox({ size = "md", defaultValue = "", autoFocus, className }: { size?: "md" | "lg"; defaultValue?: string; autoFocus?: boolean; className?: string }) {
+export function SearchBox({
+  size = "md",
+  defaultValue,
+  autoFocus,
+  withCity,
+  className,
+}: {
+  size?: "md" | "lg" | "header";
+  defaultValue?: string;
+  autoFocus?: boolean;
+  /** Show the city picker inside the field and apply it to searches. */
+  withCity?: boolean;
+  className?: string;
+}) {
   const router = useRouter();
-  const [q, setQ] = useState(defaultValue);
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const { city } = useCity();
+  // On browse pages the field mirrors the active query.
+  const urlQ = pathname.startsWith("/browse") ? params.get("q") ?? "" : "";
+  const [q, setQ] = useState(defaultValue ?? urlQ);
+  const [syncedQ, setSyncedQ] = useState(urlQ);
+  if (defaultValue === undefined && urlQ !== syncedQ) {
+    setSyncedQ(urlQ);
+    setQ(urlQ);
+  }
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<Suggestion[]>([]);
@@ -64,7 +89,12 @@ export function SearchBox({ size = "md", defaultValue = "", autoFocus, className
   function submit(term = q) {
     setOpen(false);
     const t = term.trim();
-    router.push(t ? `/browse?q=${encodeURIComponent(t)}` : "/browse");
+    const sp = new URLSearchParams();
+    if (t) sp.set("q", t);
+    if (withCity && city) sp.set("city", city);
+    // Searching from a category page keeps you in that category.
+    const base = pathname.startsWith("/browse/") ? pathname : "/browse";
+    router.push(sp.size ? `${base}?${sp}` : base);
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -95,10 +125,18 @@ export function SearchBox({ size = "md", defaultValue = "", autoFocus, className
           submit();
         }}
         className={cn(
-          "flex items-center gap-2 rounded-full border border-input bg-surface shadow-xs transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/12",
-          size === "lg" ? "h-14 ps-5 pe-1.5" : "h-10 ps-3.5 pe-1",
+          "flex items-center gap-2 border border-input bg-surface transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/12",
+          size === "lg" && "h-14 rounded-full ps-5 pe-1.5 shadow-xs",
+          size === "md" && "h-10 rounded-full ps-3.5 pe-1 shadow-xs",
+          size === "header" && "h-11 rounded-lg ps-2 pe-1 bg-surface-2/70 focus-within:bg-surface",
         )}
       >
+        {withCity && (
+          <>
+            <CityPicker className="ps-1.5" compact={size !== "lg"} />
+            <span className="h-5 w-px shrink-0 bg-border-strong" aria-hidden />
+          </>
+        )}
         <Search className={cn("shrink-0 text-subtle-foreground", size === "lg" ? "size-5" : "size-4")} aria-hidden />
         <input
           type="search"
@@ -123,8 +161,10 @@ export function SearchBox({ size = "md", defaultValue = "", autoFocus, className
         <button
           type="submit"
           className={cn(
-            "shrink-0 rounded-full bg-primary font-semibold text-primary-foreground transition hover:bg-primary-hover",
-            size === "lg" ? "h-11 px-6 text-sm" : "h-8 px-3.5 text-[13px]",
+            "shrink-0 bg-primary font-semibold text-primary-foreground transition hover:bg-primary-hover",
+            size === "lg" && "h-11 rounded-full px-6 text-sm",
+            size === "md" && "h-8 rounded-full px-3.5 text-[13px]",
+            size === "header" && "h-9 rounded-md px-4 text-[13px]",
           )}
         >
           بحث

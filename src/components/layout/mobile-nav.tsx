@@ -6,19 +6,21 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 /** App-like bottom tab bar on small screens. Hidden on listing pages (they have their own action bar). */
-export function MobileTabBar({ unread = 0, signedIn }: { unread?: number; signedIn: boolean }) {
+export function MobileTabBar({ unread = 0, signedIn, preview }: { unread?: number; signedIn: boolean; preview?: boolean }) {
   const path = usePathname();
   if (path.startsWith("/listing/") || path.startsWith("/account/messages/") || path.startsWith("/account/listings/new") || path.includes("/edit")) return null;
-  const tabs = [
+  const all = [
     { href: "/", label: "الرئيسية", icon: Home, active: path === "/" },
     { href: "/browse", label: "تصفّح", icon: LayoutGrid, active: path.startsWith("/browse") },
     { href: "/account/listings/new", label: "أضف إعلان", icon: Plus, primary: true },
     { href: "/account/messages", label: "الرسائل", icon: MessageSquare, active: path.startsWith("/account/messages"), badge: unread },
     { href: signedIn ? "/account" : "/sign-in", label: signedIn ? "حسابي" : "دخول", icon: User, active: path === "/account" || path.startsWith("/account/settings") },
   ];
+  // Transactional tabs are hidden in the visual preview.
+  const tabs = preview ? all.filter((t) => t.href === "/" || t.href === "/browse") : all;
   return (
     <nav aria-label="التنقل الرئيسي" className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur md:hidden pb-safe">
-      <ul className="grid grid-cols-5 pt-1.5">
+      <ul className={cn("grid pt-1.5", tabs.length === 5 ? "grid-cols-5" : "grid-cols-2")}>
         {tabs.map((t) => (
           <li key={t.href}>
             <Link href={t.href} className={cn("relative flex flex-col items-center gap-0.5 py-1 text-[10.5px] font-medium", t.active ? "text-primary-ink" : "text-muted-foreground")}>
