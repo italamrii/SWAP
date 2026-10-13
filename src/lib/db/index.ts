@@ -5,7 +5,12 @@ import * as schema from "./schema";
 
 const url =
   process.env.DATABASE_URL ??
-  (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build"
+  (process.env.NODE_ENV === "production" &&
+    process.env.NEXT_PHASE !== "phase-production-build" &&
+    // A Vercel deployment without a database serves only clearly labeled visual
+    // preview routes. Those routes never query Postgres; we must still allow
+    // module imports of the shared DB client to complete.
+    !(process.env.VERCEL === "1" && !process.env.DATABASE_URL)
     ? (() => { throw new Error("DATABASE_URL must be set in production"); })()
     : "postgres://swap:swap@127.0.0.1:5432/swap");
 
