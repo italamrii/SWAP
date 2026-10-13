@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import { passwordResetTokens, profiles, users } from "@/lib/db/schema";
 import { APP_URL } from "@/lib/env";
 import { rateLimit } from "@/lib/rate-limit";
+import { demoAccountsBlocked, isDemoEmail } from "@/lib/demo";
 import { safeNext } from "@/lib/safe-next";
 import { emailSchema, passwordSchema, usernameSchema } from "@/lib/validation/auth";
 
@@ -30,6 +31,7 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
   const parsed = signUpSchema.safeParse(raw);
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, values };
   const { displayName, email, password } = parsed.data;
+  if (isDemoEmail(email)) return { fieldErrors: { email: ["هذا النطاق مخصص لحسابات العرض"] }, values };
 
   const [exists] = await db.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = ${email}`).limit(1);
   if (exists) return { fieldErrors: { email: ["هذا البريد مسجّل مسبقًا. جرّب تسجيل الدخول."] }, values };
@@ -59,6 +61,7 @@ export async function signIn(_: FormState, form: FormData): Promise<FormState> {
   const parsed = signInSchema.safeParse(raw);
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, values };
   const { email, password } = parsed.data;
+  if (isDemoEmail(email) && demoAccountsBlocked()) return { error: "حسابات العرض معطّلة في بيئة الإنتاج.", values };
   if (!(await rateLimit(`signin:${email}`, 10, 900))) return { error: "محاولات دخول كثيرة. انتظر 15 دقيقة ثم حاول مجددًا.", values };
 
   const [u] = await db.select().from(users).where(sql`lower(${users.email}) = ${email}`).limit(1);

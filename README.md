@@ -31,14 +31,14 @@ pnpm db:migrate && pnpm db:seed      # schema + realistic Arabic demo data
 pnpm dev                             # http://localhost:3100
 ```
 
-Demo accounts (seed only):
+Demo accounts (**local development and CI only**). The seed refuses non-local databases, and logins on the reserved `@swap.example` domain are blocked when `NODE_ENV=production`:
 
 | Role | Email | Password |
 |---|---|---|
-| Admin | admin@swap.sa | Admin@12345 |
-| Moderator | mod@swap.sa | Mod@12345 |
-| User (has chats, offers, a listing) | demo@swap.sa | Demo@12345 |
-| Seller (trusted) | abdullah@example.com | Seller@12345 |
+| Admin | admin@swap.example | Admin@12345 |
+| Moderator | mod@swap.example | Mod@12345 |
+| User (has chats, offers, a listing) | demo@swap.example | Demo@12345 |
+| Seller (trusted) | abdullah@swap.example | Seller@12345 |
 
 `pnpm db:reset` drops and rebuilds the local database. It refuses to run in production.
 

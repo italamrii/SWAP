@@ -10,9 +10,13 @@ import { listingSlug } from "../src/lib/slug";
 import { SEED_LISTINGS } from "./seed-data/listings";
 import { SEED_USERS } from "./seed-data/users";
 
-if (process.env.NODE_ENV === "production") throw new Error("Refusing to seed demo data in production");
-
 const url = process.env.DATABASE_URL ?? "postgres://swap:swap@127.0.0.1:5432/swap";
+// Demo data has publicly documented passwords: only ever seed local/CI databases.
+const host = new URL(url).hostname;
+if (process.env.NODE_ENV === "production") throw new Error("Refusing to seed demo data with NODE_ENV=production");
+if (!["localhost", "127.0.0.1", "::1"].includes(host) && process.env.ALLOW_DEMO_SEED !== "true") {
+  throw new Error(`Refusing to seed demo accounts into non-local database host "${host}". Set ALLOW_DEMO_SEED=true for a private staging DB.`);
+}
 const client = postgres(url, { max: 1, onnotice: () => {} });
 const db = drizzle(client, { schema: s, casing: "snake_case" });
 
@@ -182,7 +186,7 @@ async function main() {
   if (viewRows.length) await db.insert(s.listingViews).values(viewRows);
 
   console.log("✓ demo conversations, offers, notifications, reports");
-  console.log("\nDemo accounts:\n  admin@swap.sa / Admin@12345 (admin)\n  mod@swap.sa / Mod@12345 (moderator)\n  demo@swap.sa / Demo@12345 (user)");
+  console.log("\nDemo accounts:\n  admin@swap.example / Admin@12345 (admin)\n  mod@swap.example / Mod@12345 (moderator)\n  demo@swap.example / Demo@12345 (user)");
 }
 
 await main();

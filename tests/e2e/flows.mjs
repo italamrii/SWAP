@@ -93,7 +93,7 @@ describe("auth & permissions", () => {
   it("wrong password is rejected; protected pages redirect", async () => {
     const p = await newPage();
     await p.goto(`${BASE}/sign-in`);
-    await p.fill("input[name=email]", "demo@swap.sa");
+    await p.fill("input[name=email]", "demo@swap.example");
     await p.fill("input[name=password]", "wrong-pass1");
     await p.click("button[type=submit]");
     await p.getByText("البريد الإلكتروني أو كلمة المرور غير صحيحة").waitFor();
@@ -101,10 +101,10 @@ describe("auth & permissions", () => {
     assert.match(p.url(), /\/sign-in\?next=%2Faccount%2Fmessages/);
   });
   it("non-staff cannot reach admin; moderator cannot reach admin-only pages", async () => {
-    const demo = await login("demo@swap.sa", "Demo@12345");
+    const demo = await login("demo@swap.example", "Demo@12345");
     await demo.goto(`${BASE}/admin`);
     assert.equal(new URL(demo.url()).pathname, "/");
-    const mod = await login("mod@swap.sa", "Mod@12345");
+    const mod = await login("mod@swap.example", "Mod@12345");
     await mod.goto(`${BASE}/admin/categories`);
     await mod.waitForURL((u) => u.pathname === "/admin");
     assert.equal(await mod.getByText("تعديل الأقسام").count(), 0);
@@ -117,7 +117,7 @@ describe("auth & permissions", () => {
 
 describe("selling, offers and swaps", () => {
   it("creates a listing with photo and structured specs", async () => {
-    const p = await login("abdullah@example.com", "Seller@12345");
+    const p = await login("abdullah@swap.example", "Seller@12345");
     await p.goto(`${BASE}/account/listings/new`);
     await p.click('button[role=radio]:has-text("لابتوبات")');
     await p.setInputFiles("input[type=file]", PHOTO);
@@ -136,14 +136,14 @@ describe("selling, offers and swaps", () => {
     await p.getByText("Legion Pro 5").first().waitFor();
   });
   it("buyer sends a price offer; seller accepts; buyer sees it", async () => {
-    const buyer = await login("sarah@example.com", "Seller@12345");
+    const buyer = await login("sarah@swap.example", "Seller@12345");
     await buyer.goto(`${BASE}/browse?q=Legion Pro 5`);
     await buyer.click("article a >> nth=0");
     await buyer.click('aside button:has-text("قدّم عرض سعر")');
     await buyer.fill("#offer-amount", "4900");
     await Promise.all([buyer.waitForURL(/\/account\/messages\//), buyer.click('[role=dialog] button:has-text("إرسال العرض")')]);
     const thread = buyer.url();
-    const seller = await login("abdullah@example.com", "Seller@12345");
+    const seller = await login("abdullah@swap.example", "Seller@12345");
     await seller.goto(`${BASE}/account/offers`);
     await seller.locator('li:has-text("Legion Pro 5") button:has-text("قبول")').click();
     await seller.getByText("قبلت العرض").waitFor();
@@ -151,7 +151,7 @@ describe("selling, offers and swaps", () => {
     await buyer.getByText("قبل البائع").first().waitFor();
   });
   it("swap offer is blocked on listings that don't accept swaps", async () => {
-    const p = await login("sarah@example.com", "Seller@12345");
+    const p = await login("sarah@swap.example", "Seller@12345");
     await p.goto(`${BASE}/browse?q=Legion Pro 5`);
     await p.click("article a >> nth=0");
     assert.equal(await p.locator('aside button:has-text("اقترح بدل")').count(), 0);
@@ -160,7 +160,7 @@ describe("selling, offers and swaps", () => {
 
 describe("inspection & verification", () => {
   it("seller submits a report with evidence; moderator approves; badge appears", async () => {
-    const s = await login("abdullah@example.com", "Seller@12345");
+    const s = await login("abdullah@swap.example", "Seller@12345");
     await s.goto(`${BASE}/account/verification`);
     await s.locator('li:has-text("Legion Pro 5") button:has-text("ابدأ التوثيق")').click();
     await s.waitForURL(/\/account\/verification\/[0-9a-f-]{36}/);
@@ -174,7 +174,7 @@ describe("inspection & verification", () => {
     await s.click('label:has-text("أقر بأن البيانات")');
     await Promise.all([s.waitForURL(/submitted=1/), s.click('button:has-text("إرسال للمراجعة")')]);
 
-    const mod = await login("mod@swap.sa", "Mod@12345");
+    const mod = await login("mod@swap.example", "Mod@12345");
     await mod.goto(`${BASE}/admin/inspections`);
     await mod.click('a:has-text("Legion Pro 5")');
     await mod.getByText(code).first().waitFor();
@@ -213,7 +213,7 @@ describe("responsive & accessibility smoke", () => {
     }
   });
   it("account pages fit on mobile", async () => {
-    const p = await login("demo@swap.sa", "Demo@12345", 375);
+    const p = await login("demo@swap.example", "Demo@12345", 375);
     for (const path of ["/account", "/account/listings", "/account/messages", "/account/offers", "/account/favorites", "/account/settings", "/account/verification"]) {
       await p.goto(BASE + path);
       const sw = await p.evaluate(() => document.documentElement.scrollWidth);

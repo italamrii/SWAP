@@ -69,3 +69,17 @@ describe("inspection agent signatures", () => {
     assert.match(checksum(body), /^sha256:[a-f0-9]{64}$/);
   });
 });
+
+describe("demo accounts", () => {
+  it("are recognised by reserved domain and blocked in production", async () => {
+    const { isDemoEmail, demoAccountsBlocked } = await import("../src/lib/demo");
+    assert.equal(isDemoEmail("Admin@SWAP.example"), true);
+    assert.equal(isDemoEmail("someone@swap.sa"), false);
+    const env = process.env as Record<string, string | undefined>;
+    const prev = env.NODE_ENV;
+    env.NODE_ENV = "production";
+    assert.equal(demoAccountsBlocked(), true);
+    env.NODE_ENV = prev;
+    assert.equal(demoAccountsBlocked(), false);
+  });
+});

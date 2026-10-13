@@ -48,6 +48,9 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
       - name: E2E
+        env:
+          # Throwaway CI database only — demo logins stay blocked in real production.
+          ALLOW_DEMO_ACCOUNTS: "true"
         run: |
           pnpm start > server.log 2>&1 &
           npx wait-on -t 60000 http://localhost:3100
