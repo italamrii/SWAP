@@ -25,11 +25,7 @@ export function SearchBox({ size = "md", defaultValue = "", autoFocus, className
 
   useEffect(() => {
     const term = q.trim();
-    if (term.length < 2) {
-      setItems([]);
-      setCats([]);
-      return;
-    }
+    if (term.length < 2) return;
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       setLoading(true);
@@ -59,7 +55,8 @@ export function SearchBox({ size = "md", defaultValue = "", autoFocus, className
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  const options = [
+  const showSuggestions = q.trim().length >= 2;
+  const options = !showSuggestions ? [] : [
     ...cats.map((c) => ({ key: `c-${c.slug}`, href: `/browse/${c.slug}`, label: c.nameAr, meta: "قسم" })),
     ...items.map((i) => ({ key: i.slug, href: `/listing/${i.slug}`, label: i.title, meta: formatSAR(i.price) })),
   ];

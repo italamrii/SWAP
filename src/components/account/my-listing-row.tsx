@@ -31,13 +31,15 @@ export function MyListingRow({ l }: { l: MyListing }) {
   const change = (s: "active" | "sold" | "hidden") =>
     start(async () => {
       const res = await setListingStatus({ listingId: l.id, status: s });
-      res.ok ? toast.success(res.message) : toast.error(res.error);
+      if (res.ok) toast.success(res.message);
+      else toast.error(res.error);
       router.refresh();
     });
   const remove = () =>
     start(async () => {
       const res = await deleteListing(l.id);
-      res.ok ? toast.success(res.message) : toast.error(res.error);
+      if (res.ok) toast.success(res.message);
+      else toast.error(res.error);
       router.refresh();
     });
 

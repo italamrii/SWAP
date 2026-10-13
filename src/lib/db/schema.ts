@@ -389,6 +389,17 @@ export const banners = pgTable("banners", {
   updatedAt: updatedAt(),
 });
 
+export const supportTickets = pgTable("support_tickets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  topic: text("topic").notNull(),
+  message: text("message").notNull(),
+  status: text("status").notNull().default("open"), // open | closed
+  createdAt: createdAt(),
+}, (t) => [index("support_tickets_status_idx").on(t.status, t.createdAt)]);
+
 export type User = typeof users.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
 export type Listing = typeof listings.$inferSelect;

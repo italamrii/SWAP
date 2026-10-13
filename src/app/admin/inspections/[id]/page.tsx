@@ -51,7 +51,7 @@ export default async function ReviewInspectionPage({ params }: { params: Promise
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
           <Alert variant="neutral"><Fingerprint /><div>كود التحقق المتوقع في صورة الجهاز: <b dir="ltr" className="text-foreground tracking-widest">{d.inspection.verificationCode}</b>. تأكد أنه ظاهر بوضوح بجانب الجهاز.</div></Alert>
           {flags.length > 0 && (

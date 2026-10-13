@@ -13,7 +13,7 @@ import { Field } from "@/components/ui/field";
 import { Input, NativeSelect, Textarea } from "@/components/ui/input";
 import { RadioCards } from "@/components/ui/radio-cards";
 import { VERIFICATION_META, type VerificationLevel } from "@/lib/catalog/verification";
-import { createSubcategory, deleteBanner, moderateListing, moderateUser, resolveReport, reviewInspection, revokeVerification, saveBanner, updateCategory } from "@/server/actions/admin";
+import { closeTicket, createSubcategory, deleteBanner, moderateListing, moderateUser, resolveReport, reviewInspection, revokeVerification, saveBanner, updateCategory } from "@/server/actions/admin";
 
 type R = { ok: boolean; error?: string; message?: string };
 
@@ -206,4 +206,9 @@ export function BannerEditor({ banner }: { banner?: { id: string; title: string;
       {banner && <ConfirmDialog open={confirm} onOpenChange={setConfirm} title="حذف الإعلان الترويجي؟" confirmLabel="حذف" destructive onConfirm={() => run(() => deleteBanner(banner.id))} />}
     </form>
   );
+}
+
+export function CloseTicketButton({ id }: { id: string }) {
+  const { pending, run } = useRun();
+  return <Button size="sm" variant="outline" loading={pending} onClick={() => run(() => closeTicket(id))}><Check />إغلاق</Button>;
 }

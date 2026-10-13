@@ -1,7 +1,7 @@
 import { AlertTriangle, BatteryMedium, Check, CircleHelp, Cpu, FileText, Fingerprint, Gauge, HardDrive, MemoryStick, Monitor, Plug, Thermometer, X } from "lucide-react";
 import { checklistLabel } from "@/lib/catalog/inspection";
 import { INSPECTION_DISCLAIMER, INSPECTION_SOURCES, INSPECTION_VALIDITY_DAYS, VERIFICATION_META } from "@/lib/catalog/verification";
-import { formatDate, timeAgo } from "@/lib/format";
+import { daysSince, formatDate, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { ApprovedInspection } from "@/server/queries/listings";
 import { BidiText } from "@/components/shared/bidi-text";
@@ -10,7 +10,7 @@ import { VerificationBadge } from "./verification-badge";
 export function InspectionReport({ inspection, compact }: { inspection: ApprovedInspection; compact?: boolean }) {
   const r = inspection.report;
   const level = inspection.grantedLevel ?? "seller_report";
-  const ageDays = Math.floor((Date.now() - new Date(inspection.inspectedAt).getTime()) / 864e5);
+  const ageDays = daysSince(inspection.inspectedAt);
   const stale = ageDays > INSPECTION_VALIDITY_DAYS;
   const passed = r?.checklist.filter((c) => c.ok === true).length ?? 0;
   const total = r?.checklist.length ?? 0;

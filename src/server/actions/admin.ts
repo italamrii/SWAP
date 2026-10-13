@@ -7,7 +7,7 @@ import { assertStaff } from "@/lib/auth/guards";
 import { destroyAllSessions } from "@/lib/auth/session";
 import { VERIFICATION_META, type VerificationLevel } from "@/lib/catalog/verification";
 import { db } from "@/lib/db";
-import { abuseReports, adminAuditLogs, banners, categories, inspections, listings, users, verificationStatuses } from "@/lib/db/schema";
+import { abuseReports, adminAuditLogs, banners, categories, inspections, listings, supportTickets, users, verificationStatuses } from "@/lib/db/schema";
 import { notify } from "../notify";
 import { run, type Result } from "./_utils";
 
@@ -249,5 +249,16 @@ export async function deleteBanner(id: string): Promise<Result> {
     revalidatePath("/");
     revalidatePath("/admin/content");
     return { ok: true, message: "حُذف" };
+  });
+}
+
+export async function closeTicket(id: string): Promise<Result> {
+  return run(async () => {
+    const staff = await assertStaff();
+    if (!uuid.safeParse(id).success) return { ok: false, error: "طلب غير صالح" };
+    await db.update(supportTickets).set({ status: "closed" }).where(eq(supportTickets.id, id));
+    await audit(staff.id, "ticket.close", "ticket", id);
+    revalidatePath("/admin/reports");
+    return { ok: true, message: "أُغلقت الرسالة" };
   });
 }

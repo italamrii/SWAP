@@ -1,3 +1,4 @@
+import "./zod-ar";
 import { z } from "zod";
 import { CONDITION_VALUES } from "@/lib/catalog/conditions";
 

@@ -28,7 +28,7 @@ ${[0, 72, 144, 216, 288].map((a) => `<path transform="rotate(${a} ${cx} ${cy})" 
 <circle cx="${cx}" cy="${cy}" r="${r * 0.22}" fill="#3a4048"/>`;
 
 const art = {
-  gpu: (accent) => `<rect x="130" y="210" width="540" height="190" rx="26" fill="url(#metal)"/>
+  gpu: () => `<rect x="130" y="210" width="540" height="190" rx="26" fill="url(#metal)"/>
 <rect x="130" y="210" width="540" height="190" rx="26" fill="url(#glass)"/>
 ${fan(265, 305, 70)}${fan(445, 305, 70)}
 <rect x="545" y="245" width="95" height="120" rx="14" fill="#262b31"/>
@@ -139,7 +139,7 @@ ${fan(240, 260, 56, "#22272d")}${fan(400, 260, 56, "#22272d")}${fan(560, 260, 56
 mkdirSync("public/seed", { recursive: true });
 for (const [name, draw] of Object.entries(art)) {
   for (const [variant, bg] of Object.entries(BGS)) {
-    writeFileSync(`public/seed/${name}-${variant}.svg`, frame(bg, draw("#0e9f6e")));
+    writeFileSync(`public/seed/${name}-${variant}.svg`, frame(bg, draw()));
   }
 }
 console.log("✓ seed art generated:", Object.keys(art).length * Object.keys(BGS).length, "files");

@@ -1,3 +1,4 @@
+import "./zod-ar";
 import { z } from "zod";
 import { isTrustedImageUrl } from "./listing";
 

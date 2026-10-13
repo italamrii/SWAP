@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeftRight, BadgeCheck, ChevronDown, HandCoins, SlidersHorizontal } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, NativeSelect } from "@/components/ui/input";
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -88,7 +88,7 @@ function FilterBody({ fields, facets, subcategories, activeCount }: FilterPanelP
       )}
 
       <Section title="السعر (ر.س)">
-        <PriceRange min={params.get("min") ?? ""} max={params.get("max") ?? ""} onCommit={(min, max) => update({ min, max })} />
+        <PriceRange key={`price-${params.get("min")}-${params.get("max")}`} min={params.get("min") ?? ""} max={params.get("max") ?? ""} onCommit={(min, max) => update({ min, max })} />
       </Section>
 
       <Section title="المدينة">
@@ -124,6 +124,7 @@ function SpecFilter({ field, counts }: { field: SpecField; counts: Record<string
     return (
       <Section title={`${field.label}${field.unit ? ` (${field.unit})` : ""}`} defaultOpen={false} hasValue={!!(params.get(`${key}.min`) || params.get(`${key}.max`))}>
         <PriceRange
+          key={`${key}-${params.get(`${key}.min`)}-${params.get(`${key}.max`)}`}
           min={params.get(`${key}.min`) ?? ""}
           max={params.get(`${key}.max`) ?? ""}
           onCommit={(min, max) => update({ [`${key}.min`]: min, [`${key}.max`]: max })}
@@ -223,10 +224,6 @@ function ToggleRow({ label, checked, onChange, icon: Icon, count }: { label: str
 function PriceRange({ min, max, onCommit, placeholderMin = "من" }: { min: string; max: string; onCommit: (min: string | null, max: string | null) => void; placeholderMin?: string }) {
   const [lo, setLo] = useState(min);
   const [hi, setHi] = useState(max);
-  useEffect(() => {
-    setLo(min);
-    setHi(max);
-  }, [min, max]);
   const commit = () => {
     if (lo === min && hi === max) return;
     onCommit(lo || null, hi || null);

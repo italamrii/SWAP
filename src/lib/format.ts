@@ -60,3 +60,7 @@ export const listingsCount = (n: number) =>
 export function compactNumber(n: number) {
   return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 }
+
+export function daysSince(d: Date | string) {
+  return Math.floor((Date.now() - new Date(d).getTime()) / 864e5);
+}

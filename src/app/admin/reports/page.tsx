@@ -1,7 +1,10 @@
 import { FlagOff } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ReportResolution } from "@/components/admin/controls";
+import { CloseTicketButton, ReportResolution } from "@/components/admin/controls";
+import { desc, eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { supportTickets } from "@/lib/db/schema";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -14,14 +17,30 @@ export const metadata: Metadata = { title: "البلاغات" };
 
 export default async function AdminReports({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab = "open" } = await searchParams;
-  const rows = await getAdminReports(tab === "closed" ? "closed" : "open");
+  const rows = tab === "support" ? [] : await getAdminReports(tab === "closed" ? "closed" : "open");
+  const tickets = tab === "support" ? await db.select().from(supportTickets).where(eq(supportTickets.status, "open")).orderBy(desc(supportTickets.createdAt)).limit(100) : [];
   return (
     <div className="space-y-6">
       <PageHeader title="البلاغات" description="بلاغات المستخدمين عن إعلانات أو حسابات مخالفة. استهدف المعالجة خلال 24 ساعة." />
       <div className="flex gap-1">
-        {[["open", "مفتوحة"], ["closed", "مغلقة"]].map(([k, l]) => <Link key={k} href={`/admin/reports?tab=${k}`} className={cn("inline-flex h-9 items-center rounded-full px-3.5 text-[13px] font-medium", tab === k ? "bg-graphite text-background" : "bg-surface-2 text-muted-foreground")}>{l}</Link>)}
+        {[["open", "مفتوحة"], ["closed", "مغلقة"], ["support", "رسائل التواصل"]].map(([k, l]) => <Link key={k} href={`/admin/reports?tab=${k}`} className={cn("inline-flex h-9 items-center rounded-full px-3.5 text-[13px] font-medium", tab === k ? "bg-graphite text-background" : "bg-surface-2 text-muted-foreground")}>{l}</Link>)}
       </div>
-      {rows.length === 0 ? <EmptyState icon={FlagOff} title="لا توجد بلاغات" description={tab === "open" ? "الطابور فاضي." : undefined} /> : (
+      {tab === "support" ? (
+        tickets.length === 0 ? <EmptyState icon={FlagOff} title="لا توجد رسائل مفتوحة" /> : (
+          <ul className="space-y-3">
+            {tickets.map((t) => (
+              <li key={t.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-xs sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{t.name} <a href={`mailto:${t.email}`} className="font-normal text-primary-ink hover:underline" dir="ltr">{t.email}</a></p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{t.topic} · {timeAgo(t.createdAt)}</p>
+                  <p className="mt-2 text-sm leading-relaxed whitespace-pre-line">{t.message}</p>
+                </div>
+                <CloseTicketButton id={t.id} />
+              </li>
+            ))}
+          </ul>
+        )
+      ) : rows.length === 0 ? <EmptyState icon={FlagOff} title="لا توجد بلاغات" description={tab === "open" ? "الطابور فاضي." : undefined} /> : (
         <ul className="space-y-3">
           {rows.map(({ report: r, reporterName, listing, user }) => (
             <li key={r.id} className="rounded-2xl border border-border bg-surface p-4 shadow-xs">

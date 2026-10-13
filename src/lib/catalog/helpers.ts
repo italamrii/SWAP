@@ -1,3 +1,4 @@
+import "../validation/zod-ar";
 import { z } from "zod";
 import { getSpecSchema } from "./specs";
 import type { SpecField, SpecValues } from "./types";
@@ -74,7 +75,7 @@ export function specValidator(schemaKey: string) {
         break;
       }
       default: {
-        const s = z.string().trim().max(120, `${f.label}: النص طويل`);
+        const s = z.string({ required_error: `${f.label} مطلوب`, invalid_type_error: `${f.label} مطلوب` }).trim().max(120, `${f.label}: النص طويل`);
         v = z.preprocess(
           (x) => (typeof x === "string" && x.trim() === "" ? undefined : x),
           f.required ? s.min(1, `${f.label} مطلوب`) : s.optional(),

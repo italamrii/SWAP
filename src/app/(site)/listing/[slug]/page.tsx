@@ -24,7 +24,7 @@ import { CONDITIONS, conditionLabel } from "@/lib/catalog/conditions";
 import { db } from "@/lib/db";
 import { listings, listingViews } from "@/lib/db/schema";
 import { APP_URL } from "@/lib/env";
-import { formatDate, formatSAR, timeAgo } from "@/lib/format";
+import { daysSince, formatDate, formatSAR, timeAgo } from "@/lib/format";
 import { getCategoryTree } from "@/server/queries/categories";
 import { getFavoriteIdSet, getListingBySlug, getSellerOtherListings, getSimilarListings } from "@/server/queries/listings";
 
@@ -74,7 +74,7 @@ export default async function ListingPage({ params }: Props) {
       : Promise.resolve([]),
   ]);
   const savedIds = await getFavoriteIdSet(user?.id, [...similar, ...more].map((x) => x.id));
-  const priceDropped = lastPriceChange && lastPriceChange.newPrice < lastPriceChange.oldPrice && Date.now() - lastPriceChange.createdAt.getTime() < 14 * 864e5;
+  const priceDropped = lastPriceChange && lastPriceChange.newPrice < lastPriceChange.oldPrice && daysSince(lastPriceChange.createdAt) < 14;
   const condition = CONDITIONS.find((c) => c.value === l.condition);
   const actionProps = {
     listing: { id: l.id, slug: l.slug, title: l.title, price: l.price, isNegotiable: l.isNegotiable, acceptsSwap: l.acceptsSwap, swapDetails: l.swapDetails },
@@ -128,7 +128,7 @@ export default async function ListingPage({ params }: Props) {
         </Alert>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:gap-12">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:gap-12">
         {/* Main column */}
         <div className="min-w-0">
           <ImageGallery

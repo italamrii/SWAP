@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeftRight, Check, HandCoins, Lightbulb, Wand2 } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { CategoryIcon } from "@/components/shared/category-icon";
 import { Price } from "@/components/shared/price";
@@ -75,7 +75,7 @@ export function ListingForm({ categories, initial, listingId }: { categories: Fo
     if (errors[`specs.${key}`]) setErrors((e) => ({ ...e, [`specs.${key}`]: undefined }));
   };
 
-  const completion = useMemo(() => {
+  const completion = (() => {
     const done = {
       category: !!v.categorySlug,
       photos: v.images.length > 0,
@@ -84,7 +84,7 @@ export function ListingForm({ categories, initial, listingId }: { categories: Fo
       pricing: Number(v.price) > 0 && !!v.city,
     };
     return done;
-  }, [v, schema]);
+  })();
 
   function suggestTitle() {
     if (!category) return;
@@ -128,7 +128,7 @@ export function ListingForm({ categories, initial, listingId }: { categories: Fo
   const summary = category ? specSummary(category.schemaKey, v.specs as Record<string, string>) : [];
 
   return (
-    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-8 xl:grid-cols-[minmax(0,1fr)_300px]">
       <form
         className="space-y-6"
         onSubmit={(e) => {

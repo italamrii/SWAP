@@ -104,7 +104,8 @@ export async function searchListings(f: SearchInput) {
 
   const total = rows[0]?.total ?? 0;
   return {
-    items: rows.map(({ total: _t, ...r }) => r) as ListingCardData[],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    items: rows.map(({ total, ...r }) => r) as ListingCardData[],
     total,
     pages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
   };

@@ -41,9 +41,12 @@ export function ChatWindow({ conversationId, meId, role, other, listing, initial
 
   // Poll while the tab is visible. Swap for SSE/Realtime without touching the UI.
   useEffect(() => {
-    void refresh();
+    const first = setTimeout(() => void refresh(), 0);
     const id = setInterval(() => document.visibilityState === "visible" && void refresh(), POLL_MS);
-    return () => clearInterval(id);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
   }, [refresh]);
 
   useLayoutEffect(() => {
@@ -69,7 +72,6 @@ export function ChatWindow({ conversationId, meId, role, other, listing, initial
   }
 
   const hasPhone = /(?:\+?966|0)?5\d{8}/.test(body.replace(/[\s-]/g, ""));
-  let lastDay = "";
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -107,10 +109,9 @@ export function ChatWindow({ conversationId, meId, role, other, listing, initial
           <ShieldAlert className="mt-0.5 size-4 shrink-0" />
           لا تحوّل أي مبلغ قبل معاينة القطعة. قابل في مكان عام، وأبقِ التواصل داخل سواب.
         </div>
-        {messages.map((m) => {
+        {messages.map((m, i) => {
           const day = formatDate(m.createdAt);
-          const showDay = day !== lastDay;
-          lastDay = day;
+          const showDay = i === 0 || formatDate(messages[i - 1].createdAt) !== day;
           const mine = m.senderId === meId;
           return (
             <div key={m.id}>

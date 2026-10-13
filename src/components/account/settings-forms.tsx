@@ -145,7 +145,7 @@ export function SecurityForm() {
         <Field label="كلمة المرور الجديدة" error={errors.next} hint="8 أحرف على الأقل، تتضمن حرفًا ورقمًا."><PasswordInput value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" /></Field>
         <div className="flex flex-wrap gap-2 sm:col-span-2">
           <Button type="submit" loading={pending} disabled={!cur || !next}><KeyRound />تغيير كلمة المرور</Button>
-          <Button type="button" variant="outline" onClick={() => start(async () => { const r = await signOutOtherSessions(); r.ok ? toast.success(r.message) : toast.error(r.error); })}><LogOut />الخروج من الأجهزة الأخرى</Button>
+          <Button type="button" variant="outline" onClick={() => start(async () => { const r = await signOutOtherSessions(); if (r.ok) toast.success(r.message); else toast.error(r.error); })}><LogOut />الخروج من الأجهزة الأخرى</Button>
         </div>
       </form>
     </Card>

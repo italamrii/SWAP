@@ -36,7 +36,7 @@ export default async function AccountHome({ searchParams }: { searchParams: Prom
         <Stat label="عروض بانتظار ردك" value={counts.offers} hint={<Link href="/account/offers" className="text-primary-ink hover:underline">مراجعة العروض</Link>} icon={<Tag className="size-4" />} />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <section className="rounded-2xl border border-border bg-surface p-5 shadow-xs">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-semibold">آخر النشاطات</h2>

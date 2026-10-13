@@ -1,3 +1,4 @@
+import "./zod-ar";
 import { z } from "zod";
 
 export const emailSchema = z.string({ required_error: "أدخل بريدك الإلكتروني" }).trim().toLowerCase().email("صيغة البريد الإلكتروني غير صحيحة").max(160);

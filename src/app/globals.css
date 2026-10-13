@@ -156,3 +156,19 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* Long-form content (legal, help) */
+@layer components {
+  .prose-swap { font-size: 15.5px; line-height: 1.95; color: var(--foreground); }
+  .prose-swap h2 { margin-top: 2.5rem; margin-bottom: 0.75rem; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; scroll-margin-top: 6rem; }
+  .prose-swap h3 { margin-top: 1.75rem; margin-bottom: 0.5rem; font-size: 1.05rem; font-weight: 600; }
+  .prose-swap p { margin-block: 0.85rem; color: color-mix(in srgb, var(--foreground) 88%, transparent); }
+  .prose-swap ul, .prose-swap ol { margin-block: 0.85rem; padding-inline-start: 1.4rem; }
+  .prose-swap ul { list-style: disc; }
+  .prose-swap ol { list-style: decimal; }
+  .prose-swap li { margin-block: 0.35rem; }
+  .prose-swap li::marker { color: var(--primary); }
+  .prose-swap a { color: var(--primary-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+  .prose-swap strong { font-weight: 700; }
+  .prose-swap blockquote { margin-block: 1.25rem; border-inline-start: 3px solid var(--primary); background: var(--primary-soft); padding: 0.85rem 1.1rem; border-radius: 0.75rem; }
+}
