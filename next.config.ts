@@ -18,7 +18,8 @@ const csp = [
 const supabaseHost = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).hostname : undefined;
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Docker builds need standalone; Vercel manages its own Next.js output tracing.
+  output: process.env.VERCEL === "1" ? undefined : "standalone",
   poweredByHeader: false,
   outputFileTracingExcludes: { "*": ["./storage/**/*", "./tests/**/*", "./docs/**/*"] },
   serverExternalPackages: ["postgres", "sharp"],
