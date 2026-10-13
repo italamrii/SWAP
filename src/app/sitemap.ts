@@ -3,10 +3,13 @@ import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
 import { categories, listings } from "@/lib/db/schema";
 import { APP_URL } from "@/lib/env";
+import { VISUAL_PREVIEW } from "@/lib/visual-preview";
 
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // The design preview holds no real listings and must not be indexed.
+  if (VISUAL_PREVIEW) return [];
   const [cats, rows] = await Promise.all([
     db.select({ slug: categories.slug, parentId: categories.parentId }).from(categories).where(eq(categories.isActive, true)),
     db.select({ slug: listings.slug, updatedAt: listings.updatedAt }).from(listings).where(eq(listings.status, "active")).orderBy(desc(listings.updatedAt)).limit(5000),

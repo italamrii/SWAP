@@ -83,3 +83,21 @@ describe("demo accounts", () => {
     assert.equal(demoAccountsBlocked(), false);
   });
 });
+
+describe("visual preview gating", () => {
+  it("never activates when a database is configured", async () => {
+    const { isVisualPreview } = await import("../src/lib/preview-mode");
+    assert.equal(isVisualPreview({ DATABASE_URL: "postgres://x", SWAP_VISUAL_PREVIEW: "1" }), false);
+    assert.equal(isVisualPreview({ DATABASE_URL: "postgres://x", VERCEL: "1", VERCEL_URL: "swap-preview-abc.vercel.app" }), false);
+  });
+  it("requires an explicit opt-in: flag or the swap-preview Vercel project", async () => {
+    const { isVisualPreview } = await import("../src/lib/preview-mode");
+    assert.equal(isVisualPreview({}), false, "local without DB is not preview");
+    assert.equal(isVisualPreview({ VERCEL: "1", VERCEL_URL: "swap-prod-abc.vercel.app" }), false, "other Vercel projects fail loudly");
+    assert.equal(isVisualPreview({ VERCEL: "1" }), false);
+    assert.equal(isVisualPreview({ VERCEL: "1", VERCEL_URL: "swap-preview-q558z0auw-italamriis-projects.vercel.app" }), true);
+    assert.equal(isVisualPreview({ VERCEL: "1", VERCEL_PROJECT_PRODUCTION_URL: "swap-preview.vercel.app" }), true);
+    assert.equal(isVisualPreview({ SWAP_VISUAL_PREVIEW: "1" }), true);
+    assert.equal(isVisualPreview({ SWAP_VISUAL_PREVIEW: "0", VERCEL: "1", VERCEL_URL: "swap-preview-x.vercel.app" }), false);
+  });
+});

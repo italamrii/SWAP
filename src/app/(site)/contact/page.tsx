@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ContactForm } from "@/components/shared/contact-form";
 import { ContentPage } from "@/components/shared/content-page";
 import { getCurrentUser } from "@/lib/auth/session";
+import { VISUAL_PREVIEW } from "@/lib/visual-preview";
 
 export const metadata: Metadata = { title: "تواصل معنا", description: "تواصل مع فريق سواب للدعم والاستفسارات والشراكات." };
 
@@ -12,7 +13,11 @@ export default async function ContactPage() {
     <ContentPage eyebrow="تواصل معنا" title="حيّاك، كيف نقدر نساعدك؟" intro="قبل التواصل، قد تجد إجابتك في «كيف يعمل سواب» أو «نصائح الأمان». وإذا ما لقيتها، اكتب لنا.">
       <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
         <div className="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-6">
-          <ContactForm defaults={{ name: user?.displayName ?? "", email: user?.email ?? "" }} />
+          {VISUAL_PREVIEW ? (
+            <p className="rounded-lg bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">نموذج التواصل معطّل في معاينة التصميم.</p>
+          ) : (
+            <ContactForm defaults={{ name: user?.displayName ?? "", email: user?.email ?? "" }} />
+          )}
         </div>
         <aside className="space-y-3 text-sm">
           <div className="flex gap-3 rounded-2xl border border-border bg-surface p-4"><Clock className="size-5 shrink-0 text-primary" /><div><p className="font-semibold">أوقات الدعم</p><p className="text-muted-foreground">الأحد – الخميس، 9 ص – 9 م</p></div></div>

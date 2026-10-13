@@ -7,7 +7,7 @@ import { toAttributeRows, specValidator } from "../src/lib/catalog/helpers";
 import { hashPassword } from "../src/lib/auth/password";
 import * as s from "../src/lib/db/schema";
 import { listingSlug } from "../src/lib/slug";
-import { SEED_LISTINGS } from "./seed-data/listings";
+import { SEED_LISTINGS } from "../src/lib/sample-data/listings";
 import { SEED_USERS } from "./seed-data/users";
 
 const url = process.env.DATABASE_URL ?? "postgres://swap:swap@127.0.0.1:5432/swap";

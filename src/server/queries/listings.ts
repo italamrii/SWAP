@@ -124,8 +124,9 @@ export async function getAttributeFacets(categoryId: number) {
   return out;
 }
 
-export async function getLatestListings(limit = 8, opts: { verifiedOnly?: boolean; swapOnly?: boolean } = {}) {
+export async function getLatestListings(limit = 8, opts: { verifiedOnly?: boolean; swapOnly?: boolean; categoryId?: number } = {}) {
   const where: SQL[] = [eq(listings.status, "active")];
+  if (opts.categoryId) where.push(eq(listings.categoryId, opts.categoryId));
   if (opts.verifiedOnly) where.push(ne(listings.verificationLevel, "unverified"));
   if (opts.swapOnly) where.push(eq(listings.acceptsSwap, true));
   return (await cardQuery().where(and(...where)).orderBy(desc(listings.bumpedAt)).limit(limit)) as ListingCardData[];
@@ -195,7 +196,7 @@ export async function getListingBySlug(slug: string) {
     images,
     inspection,
     sellerStats: sellerStats[0] ?? { active: 0, sold: 0, verified: 0 },
-    lastPriceChange: priceHistory[0] ?? null,
+    lastPriceChange: (priceHistory[0] as (typeof priceHistory)[number] | undefined) ?? null,
   };
 }
 export type ListingDetail = NonNullable<Awaited<ReturnType<typeof getListingBySlug>>>;

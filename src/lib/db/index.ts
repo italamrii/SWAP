@@ -1,17 +1,18 @@
 import "server-only";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { isVisualPreview } from "../preview-mode";
 import * as schema from "./schema";
 
 const url =
   process.env.DATABASE_URL ??
   (process.env.NODE_ENV === "production" &&
-    process.env.NEXT_PHASE !== "phase-production-build" &&
-    // A Vercel deployment without a database serves only clearly labeled visual
-    // preview routes. Those routes never query Postgres; we must still allow
-    // module imports of the shared DB client to complete.
-    !(process.env.VERCEL === "1" && !process.env.DATABASE_URL)
-    ? (() => { throw new Error("DATABASE_URL must be set in production"); })()
+  process.env.NEXT_PHASE !== "phase-production-build" &&
+  // The opted-in visual preview never queries Postgres, but shared modules still import this client.
+  !isVisualPreview()
+    ? (() => {
+        throw new Error("DATABASE_URL must be set in production (visual preview is only allowed when explicitly opted in)");
+      })()
     : "postgres://swap:swap@127.0.0.1:5432/swap");
 
 // Reuse one pool across hot reloads in dev.
