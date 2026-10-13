@@ -254,7 +254,7 @@ function SwapDialog({ listing, isOpen, onClose, myListings, categories }: Listin
           <Field label="القطعة اللي تعرضها" required error={errors.offeredTitle}>
             <Input value={form.offeredTitle} onChange={(e) => set("offeredTitle", e.target.value)} placeholder="مثلًا: RX 7800 XT Sapphire Pulse 16GB" />
           </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
             <Field label="القسم" optional>
               <NativeSelect value={form.offeredCategoryId} onChange={(e) => set("offeredCategoryId", e.target.value)}>
                 <option value="">اختر القسم</option>

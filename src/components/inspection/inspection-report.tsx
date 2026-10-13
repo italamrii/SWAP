@@ -54,7 +54,7 @@ export function InspectionReport({ inspection, compact }: { inspection: Approved
 
           {(r.cpuModel || r.gpuModel || r.motherboard || r.ramCapacityGb || r.os) && (
             <Block title="مكونات مكتشفة">
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-2">
                 {r.cpuModel && <HwRow icon={Cpu} label="المعالج" value={r.cpuModel} />}
                 {r.gpuModel && <HwRow icon={Monitor} label="كرت الشاشة" value={r.gpuModel} />}
                 {r.motherboard && <HwRow icon={Plug} label="اللوحة الأم" value={r.motherboard} />}
@@ -84,7 +84,7 @@ export function InspectionReport({ inspection, compact }: { inspection: Approved
           )}
 
           {(r.batteryHealthPct !== null || hasTemps) && (
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-6 sm:grid-cols-2">
               {r.batteryHealthPct !== null && (
                 <Block title="البطارية">
                   <div className="flex items-center gap-4 rounded-xl border border-border p-4">
@@ -109,7 +109,7 @@ export function InspectionReport({ inspection, compact }: { inspection: Approved
 
           {(r.benchmarks.length > 0 || r.stressTest?.tool) && (
             <Block title="الأداء واختبار الضغط">
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-2">
                 {r.benchmarks.map((b, i) => (
                   <div key={i} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
                     <div className="min-w-0">
@@ -135,7 +135,7 @@ export function InspectionReport({ inspection, compact }: { inspection: Approved
           )}
 
           {(r.screenNotes || r.portsNotes) && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
               {r.screenNotes && <Note title="الشاشة" body={r.screenNotes} />}
               {r.portsNotes && <Note title="المنافذ والاتصال" body={r.portsNotes} />}
             </div>
@@ -143,7 +143,7 @@ export function InspectionReport({ inspection, compact }: { inspection: Approved
 
           {!compact && r.checklist.length > 0 && (
             <Block title="قائمة الفحص">
-              <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+              <ul className="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-2 sm:grid-cols-2">
                 {r.checklist.map((c) => (
                   <li key={c.key} className="flex items-start gap-2.5 text-sm">
                     <span className={cn("mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full", c.ok === true ? "bg-primary-soft text-primary-ink" : c.ok === false ? "bg-danger-soft text-danger" : "bg-surface-2 text-muted-foreground")}>

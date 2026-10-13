@@ -19,7 +19,7 @@ export function SpecTable({ schemaKey, specs, extraRows = [] }: { schemaKey: str
     .filter((g) => g.rows.length > 0 || (g.key === "condition" && extraRows.length));
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 md:grid-cols-2">
       {groups.map((g) => (
         <div key={g.key} className={cn(g.key === "core" && "md:col-span-2")}>
           <h3 className="mb-2 text-[13px] font-semibold text-muted-foreground">{GROUPS[g.key]}</h3>

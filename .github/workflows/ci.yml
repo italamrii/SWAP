@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: swap
+          POSTGRES_PASSWORD: swap
+          POSTGRES_DB: swap
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U swap -d swap" --health-interval 2s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://swap:swap@localhost:5432/swap
+      APP_URL: http://localhost:3100
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Lint
+        run: pnpm lint
+      - name: Unit tests
+        run: pnpm test
+      - name: Migrate & seed
+        run: pnpm db:migrate && pnpm db:seed
+      - name: Build
+        run: pnpm build
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: E2E
+        run: |
+          pnpm start > server.log 2>&1 &
+          npx wait-on -t 60000 http://localhost:3100
+          pnpm test:e2e
+      - name: Server log on failure
+        if: failure()
+        run: cat server.log || true

@@ -22,7 +22,7 @@ const SELL = [
 export default function HowItWorksPage() {
   return (
     <ContentPage eyebrow="كيف يعمل سواب" title="سوق مصمم للهاردوير، من أول بحث إلى آخر تسليم." intro="سواب يربط البائع بالمشتري مباشرة. ما نملك المنتجات ولا نتدخل في الدفع، لكن نعطيكم أدوات تخلي الصفقة أوضح وأأمن.">
-      <div className="grid gap-10 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-2">
         {[{ title: "للمشتري", items: BUY }, { title: "للبائع", items: SELL }].map((g) => (
           <section key={g.title}>
             <h2 className="mb-5 text-xl font-bold">{g.title}</h2>

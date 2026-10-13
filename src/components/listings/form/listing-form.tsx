@@ -186,7 +186,7 @@ export function ListingForm({ categories, initial, listingId }: { categories: Fo
                 return (
                   <div key={g}>
                     <h3 className="mb-3 text-[13px] font-semibold text-muted-foreground">{g === "core" ? "الأساسية" : g === "condition" ? "الحالة والاستخدام" : "الملحقات"}</h3>
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
                       {fields.map((f) => (
                         <SpecFieldInput key={f.key} field={f} value={v.specs[f.key]} onChange={(val) => setSpec(f.key, val)} error={errors[`specs.${f.key}`]} />
                       ))}
@@ -224,7 +224,7 @@ export function ListingForm({ categories, initial, listingId }: { categories: Fo
         {/* 5. Pricing */}
         <Section id="pricing" n={5} title="السعر والبدل والموقع" done={completion.pricing}>
           <div className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
               <Field label="السعر" htmlFor="price" required error={errors.price}>
                 <InputAdorned id="price" inputMode="numeric" dir="ltr" className="h-12 text-start text-lg font-bold num" value={v.price} onChange={(e) => set("price", e.target.value.replace(/\D/g, ""))} end="ر.س" aria-invalid={!!errors.price} />
               </Field>

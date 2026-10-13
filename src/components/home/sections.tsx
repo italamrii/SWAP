@@ -19,7 +19,7 @@ export function WhySwap() {
         <h2 className="text-2xl font-bold tracking-tight text-balance sm:text-[32px] sm:leading-tight">سوق يفهم الفرق بين <bdi>RTX 4070</bdi> و <bdi>4070 Super</bdi>.</h2>
         <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">صممنا سواب للي يبيعون ويشترون القطع التقنية بجدية: جيمرز، مجمّعين، طلاب، ومحبي التقنية.</p>
       </div>
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-10 grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {items.map((it) => (
           <div key={it.title} className="rounded-xl border border-border bg-surface p-5 shadow-xs">
             <span className="flex size-10 items-center justify-center rounded-lg bg-primary-soft text-primary-ink">
@@ -44,7 +44,7 @@ export function VerificationExplainer() {
   return (
     <section className="container-page pt-20 sm:pt-28">
       <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-xs">
-        <div className="grid lg:grid-cols-[1.1fr_1fr]">
+        <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[1.1fr_1fr]">
           <div className="p-6 sm:p-10">
             <div className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-primary-ink"><BadgeCheck className="size-4" />التوثيق والفحص</div>
             <h2 className="text-2xl font-bold tracking-tight text-balance sm:text-[30px] sm:leading-tight">خلّ تقرير الفحص يجاوب قبل ما يسأل المشتري.</h2>
@@ -95,7 +95,7 @@ export function VerificationExplainer() {
 export function SwapShowcase() {
   return (
     <section className="container-page pt-20 sm:pt-28">
-      <div className="grid items-center gap-10 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-10 lg:grid-cols-2">
         <div className="order-2 lg:order-1">
           <div className="relative mx-auto max-w-md rounded-2xl border border-border bg-surface p-5 shadow-card">
             <div className="flex items-center gap-2 text-sm font-semibold text-swap-ink"><ArrowLeftRight className="size-4" /> اقتراح بدل</div>
@@ -157,7 +157,7 @@ export function SafetySection() {
         </div>
         <Link href="/safety" className="text-sm font-semibold text-primary-ink hover:underline underline-offset-4">كل نصائح الأمان</Link>
       </div>
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tips.map((t) => (
           <div key={t.title} className="flex gap-4 rounded-xl border border-border bg-surface p-5 shadow-xs sm:flex-col sm:gap-0">
             <t.icon className="size-6 shrink-0 text-foreground" aria-hidden />

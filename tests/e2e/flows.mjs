@@ -197,8 +197,16 @@ describe("responsive & accessibility smoke", () => {
     const p = await newPage(375);
     for (const path of pages) {
       await p.goto(BASE + path);
-      const m = await p.evaluate(() => ({ sw: document.documentElement.scrollWidth, w: innerWidth, h1: document.querySelectorAll("h1").length, dir: document.documentElement.dir, lang: document.documentElement.lang }));
+      const m = await p.evaluate(() => {
+        // Content clipped by an overflow-hidden ancestor still counts — only real scroll containers are exempt.
+        const inScroller = (el) => { for (let a = el.parentElement; a; a = a.parentElement) { const o = getComputedStyle(a).overflowX; if (o === "auto" || o === "scroll") return true; } return false; };
+        const clipped = [...document.querySelectorAll("main h1, main h2, main p, main form, main a, main button")]
+          .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && (r.left < -2 || r.right > innerWidth + 2) && !inScroller(el) && getComputedStyle(el).position !== "absolute"; })
+          .map((el) => el.tagName + ":" + (el.textContent ?? "").trim().slice(0, 30));
+        return { sw: document.documentElement.scrollWidth, w: innerWidth, h1: document.querySelectorAll("h1").length, dir: document.documentElement.dir, lang: document.documentElement.lang, clipped };
+      });
       assert.ok(m.sw <= m.w + 1, `${path} overflows: ${m.sw} > ${m.w}`);
+      assert.deepEqual(m.clipped, [], `${path} has content outside the viewport`);
       assert.equal(m.h1, 1, `${path} should have exactly one h1`);
       assert.equal(m.dir, "rtl");
       assert.equal(m.lang, "ar");

@@ -16,7 +16,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
   const other = conv.role === "buyer" ? { name: conv.sellerName, username: conv.sellerUsername } : { name: conv.buyerName, username: conv.buyerUsername };
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-surface lg:static lg:z-auto lg:block">
-      <div className="grid h-full overflow-hidden lg:h-[calc(100dvh-10rem)] lg:min-h-[560px] lg:grid-cols-[340px_1fr] lg:rounded-2xl lg:border lg:border-border lg:shadow-xs">
+      <div className="grid grid-cols-[minmax(0,1fr)] h-full overflow-hidden lg:h-[calc(100dvh-10rem)] lg:min-h-[560px] lg:grid-cols-[340px_1fr] lg:rounded-2xl lg:border lg:border-border lg:shadow-xs">
         <div className="hidden overflow-y-auto border-e border-border lg:block">
           <ConversationList items={items} activeId={id} />
         </div>

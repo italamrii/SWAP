@@ -44,7 +44,7 @@ export default async function VerificationPage({ searchParams }: { searchParams:
       <PageHeader title="التوثيق والفحص" description="أرفق تقرير فحص بإعلانك ليظهر بشارة توثيق ويتصدّر نتائج «الموثّقة أولًا»." />
       {sp.submitted && <Alert variant="success"><FileCheck2 /><div>وصلنا تقريرك! يراجعه الفريق عادةً خلال 24 ساعة، وبنبلّغك بالنتيجة.</div></Alert>}
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
         {([["seller_report", FileCheck2, "bg-info-soft text-info-ink"], ["platform_checked", ShieldCheck, "bg-primary-soft text-primary-ink"], ["partner_verified", BadgeCheck, "bg-primary text-primary-foreground"]] as const).map(([k, Icon, cls]) => (
           <div key={k} className="rounded-xl border border-border bg-surface p-4 shadow-xs">
             <span className={`flex size-8 items-center justify-center rounded-lg ${cls}`}><Icon className="size-4" /></span>

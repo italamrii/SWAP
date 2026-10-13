@@ -20,7 +20,7 @@ export function Hero({ spotlight }: { spotlight: ListingCardData | null }) {
     <section className="relative overflow-hidden border-b border-border">
       <div className="pointer-events-none absolute inset-0 bg-grid mask-fade-b opacity-70" aria-hidden />
       <div className="pointer-events-none absolute -top-40 start-1/2 size-[640px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" aria-hidden />
-      <div className="container-page relative grid items-center gap-12 py-12 sm:py-16 lg:grid-cols-[1.1fr_1fr] lg:py-20">
+      <div className="container-page relative grid grid-cols-[minmax(0,1fr)] items-center gap-12 py-12 sm:py-16 lg:grid-cols-[1.1fr_1fr] lg:py-20">
         <div>
           <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted-foreground shadow-xs">
             <span className="size-1.5 rounded-full bg-primary" aria-hidden />

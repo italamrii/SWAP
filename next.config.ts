@@ -15,13 +15,19 @@ const csp = [
   "form-action 'self'",
 ].join("; ");
 
+const supabaseHost = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).hostname : undefined;
+
 const nextConfig: NextConfig = {
+  output: "standalone",
+  poweredByHeader: false,
+  outputFileTracingExcludes: { "*": ["./storage/**/*", "./tests/**/*", "./docs/**/*"] },
   serverExternalPackages: ["postgres", "sharp"],
   experimental: {
     serverActions: { bodySizeLimit: "12mb" },
   },
   images: {
     formats: ["image/avif", "image/webp"],
+    remotePatterns: supabaseHost ? [{ protocol: "https", hostname: supabaseHost, pathname: "/storage/v1/object/public/**" }] : [],
   },
   async headers() {
     return [
@@ -32,6 +38,7 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          ...(isDev ? [] : [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }]),
           { key: "Content-Security-Policy", value: csp },
         ],
       },

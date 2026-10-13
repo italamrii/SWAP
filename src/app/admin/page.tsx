@@ -23,7 +23,7 @@ export default async function AdminHome() {
   return (
     <div className="space-y-8">
       <PageHeader title="لوحة التحكم" description="نظرة سريعة على صحة السوق وطوابير الإشراف." />
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
         {queues.map((q) => (
           <Link key={q.href} href={q.href} className="group flex items-center gap-4 rounded-2xl border border-border bg-surface p-5 shadow-xs transition hover:border-border-strong">
             <span className={`flex size-11 items-center justify-center rounded-xl ${q.n ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400" : "bg-primary-soft text-primary-ink"}`}><q.icon className="size-5" /></span>

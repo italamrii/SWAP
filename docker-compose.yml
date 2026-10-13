@@ -1,0 +1,19 @@
+# Local infrastructure for SWAP only (isolated volume and port).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: swap
+      POSTGRES_PASSWORD: swap
+      POSTGRES_DB: swap
+    ports:
+      - "5432:5432"
+    volumes:
+      - swap-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swap -d swap"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+volumes:
+  swap-pg:

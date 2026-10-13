@@ -22,7 +22,7 @@ export default function VerificationPolicyPage() {
     >
       <section id="levels" className="scroll-mt-28">
         <h2 className="mb-4 text-xl font-bold">مستويات التوثيق</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
           {LEVELS.map(({ k, icon: Icon, cls }) => (
             <div key={k} className="rounded-2xl border border-border bg-surface p-5 shadow-xs">
               <span className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${cls}`}><Icon className="size-4" />{VERIFICATION_META[k].label}</span>

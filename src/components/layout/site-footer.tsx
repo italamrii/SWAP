@@ -27,7 +27,7 @@ const COLUMNS = [
 export function SiteFooter() {
   return (
     <footer className="mt-24 border-t border-border bg-surface pb-24 md:pb-0">
-      <div className="container-page grid gap-10 py-14 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+      <div className="container-page grid grid-cols-[minmax(0,1fr)] gap-10 py-14 md:grid-cols-[1.4fr_repeat(3,1fr)]">
         <div className="max-w-xs">
           <div className="flex items-center gap-2.5">
             <LogoMark />

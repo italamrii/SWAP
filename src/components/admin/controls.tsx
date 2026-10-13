@@ -189,7 +189,7 @@ export function BannerEditor({ banner }: { banner?: { id: string; title: string;
   const [v, setV] = useState({ title: banner?.title ?? "", body: banner?.body ?? "", href: banner?.href ?? "", tone: (banner?.tone ?? "promo") as "info" | "promo" | "warning", isActive: banner?.isActive ?? true });
   const [confirm, setConfirm] = useState(false);
   return (
-    <form className="grid gap-3 rounded-xl border border-border bg-surface p-4 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => saveBanner({ id: banner?.id, ...v }), () => !banner && setV({ title: "", body: "", href: "", tone: "promo", isActive: true })); }}>
+    <form className="grid grid-cols-[minmax(0,1fr)] gap-3 rounded-xl border border-border bg-surface p-4 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => saveBanner({ id: banner?.id, ...v }), () => !banner && setV({ title: "", body: "", href: "", tone: "promo", isActive: true })); }}>
       <Field label="العنوان"><Input value={v.title} onChange={(e) => setV({ ...v, title: e.target.value })} /></Field>
       <Field label="الرابط" optional><Input dir="ltr" className="text-start" placeholder="/verification" value={v.href} onChange={(e) => setV({ ...v, href: e.target.value })} /></Field>
       <Field label="النص" optional className="sm:col-span-2"><Input value={v.body} onChange={(e) => setV({ ...v, body: e.target.value })} /></Field>

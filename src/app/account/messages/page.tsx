@@ -13,7 +13,7 @@ export default async function MessagesPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="الرسائل" description="محادثاتك مع البائعين والمشترين. رقمك يبقى مخفيًا ما لم تختر إظهاره." />
-      <div className="grid overflow-hidden rounded-2xl border border-border bg-surface shadow-xs lg:h-[calc(100dvh-14rem)] lg:min-h-[520px] lg:grid-cols-[340px_1fr]">
+      <div className="grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border border-border bg-surface shadow-xs lg:h-[calc(100dvh-14rem)] lg:min-h-[520px] lg:grid-cols-[340px_1fr]">
         <div className="overflow-y-auto lg:border-e lg:border-border">
           <ConversationList items={items} />
         </div>

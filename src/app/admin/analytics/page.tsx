@@ -22,7 +22,7 @@ export default async function AdminAnalytics() {
         <Stat label="عروض (مقبولة)" value={`${a.funnel.offers} (${a.funnel.accepted})`} hint={`نسبة القبول ${pct(a.funnel.accepted, a.funnel.offers)}%`} />
         <Stat label="صفقات مكتملة (مُباع)" value={a.funnel.sold} />
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-border bg-surface p-5 shadow-xs">
           <h2 className="mb-4 font-semibold">مشاهدات الإعلانات اليومية</h2>
           <AreaChart label="المشاهدات اليومية" data={a.views.map((v) => ({ x: v.day.slice(5), y: v.views }))} />

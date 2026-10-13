@@ -23,7 +23,7 @@ if (login) {
   await page.fill('input[name="password"]', pass);
   await Promise.all([page.waitForURL((u) => !u.pathname.startsWith("/sign-in")), page.click('button[type="submit"]')]);
 }
-if (dark) await page.evaluate(() => localStorage.setItem("theme", "dark"));
+if (dark) { await page.goto(base + "/"); await page.evaluate(() => localStorage.setItem("theme", "dark")); }
 for (const p of paths) {
   await page.goto(base + p, { waitUntil: "networkidle" });
   await page.waitForTimeout(400);

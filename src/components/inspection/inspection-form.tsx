@@ -176,7 +176,7 @@ export function InspectionForm({ inspectionId, schemaKey, verificationCode, init
       {/* Hardware */}
       {(sec.cpu || sec.gpu || sec.motherboard || sec.ram || sec.system) && (
         <Block title="المكونات" description="اكتبها كما تظهر في أداة مثل HWiNFO أو CPU-Z.">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
             {sec.cpu && <Field label="المعالج"><Input dir="ltr" className="text-start" value={v.cpuModel} onChange={(e) => set("cpuModel", e.target.value)} placeholder="AMD Ryzen 7 7800X3D" /></Field>}
             {sec.gpu && <Field label="كرت الشاشة"><Input dir="ltr" className="text-start" value={v.gpuModel} onChange={(e) => set("gpuModel", e.target.value)} placeholder="NVIDIA GeForce RTX 4070 SUPER 12GB" /></Field>}
             {sec.motherboard && <Field label="اللوحة الأم"><Input dir="ltr" className="text-start" value={v.motherboard} onChange={(e) => set("motherboard", e.target.value)} /></Field>}
@@ -195,7 +195,7 @@ export function InspectionForm({ inspectionId, schemaKey, verificationCode, init
         <Block title="التخزين" description="من CrystalDiskInfo: الموديل، الصحة، وساعات التشغيل.">
           <div className="space-y-3">
             {v.storage.map((d, i) => (
-              <div key={i} className="grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-[2fr_1fr_1fr_1fr_auto] sm:items-end">
+              <div key={i} className="grid grid-cols-[minmax(0,1fr)] gap-2 rounded-xl border border-border p-3 sm:grid-cols-[2fr_1fr_1fr_1fr_auto] sm:items-end">
                 <Field label="الموديل"><Input dir="ltr" className="text-start" value={d.model} onChange={(e) => set("storage", v.storage.map((x, j) => (j === i ? { ...x, model: e.target.value } : x)))} /></Field>
                 <Field label="السعة"><InputAdorned dir="ltr" inputMode="numeric" className="text-start" end="GB" value={d.capacityGb ?? ""} onChange={(e) => set("storage", v.storage.map((x, j) => (j === i ? { ...x, capacityGb: e.target.value.replace(/\D/g, "") } : x)))} /></Field>
                 <Field label="الصحة"><InputAdorned dir="ltr" inputMode="numeric" className="text-start" end="%" value={d.healthPct ?? ""} onChange={(e) => set("storage", v.storage.map((x, j) => (j === i ? { ...x, healthPct: e.target.value.replace(/\D/g, "") } : x)))} /></Field>
@@ -210,7 +210,7 @@ export function InspectionForm({ inspectionId, schemaKey, verificationCode, init
 
       {(sec.temps || sec.battery) && (
         <Block title="الحرارة والبطارية">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
             {sec.temps && (
               <div className="grid grid-cols-2 gap-3">
                 {([["cpuIdle", "المعالج — خامل"], ["cpuLoad", "المعالج — حمل"], ["gpuIdle", "الكرت — خامل"], ["gpuLoad", "الكرت — حمل"]] as const).map(([k, l]) => (
@@ -230,7 +230,7 @@ export function InspectionForm({ inspectionId, schemaKey, verificationCode, init
 
       {(sec.screen || sec.ports) && (
         <Block title="الشاشة والمنافذ">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
             {sec.screen && <Field label="ملاحظات الشاشة"><Textarea rows={3} value={v.screenNotes} onChange={(e) => set("screenNotes", e.target.value)} placeholder="بكسلات ميتة؟ تسريب إضاءة؟ خدوش؟" /></Field>}
             {sec.ports && <Field label="المنافذ والاتصال"><Textarea rows={3} value={v.portsNotes} onChange={(e) => set("portsNotes", e.target.value)} placeholder="هل جربت كل منافذ USB وHDMI والواي فاي؟" /></Field>}
           </div>
@@ -249,7 +249,7 @@ export function InspectionForm({ inspectionId, schemaKey, verificationCode, init
             ))}
             {v.benchmarks.length < 10 && <Button type="button" variant="outline" size="sm" onClick={() => set("benchmarks", [...v.benchmarks, { name: "", score: "" }])}><Plus />إضافة نتيجة</Button>}
           </div>
-          <div className="mt-5 grid gap-3 rounded-xl border border-border p-4 sm:grid-cols-[1fr_8rem_auto] sm:items-end">
+          <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-3 rounded-xl border border-border p-4 sm:grid-cols-[1fr_8rem_auto] sm:items-end">
             <Field label="أداة اختبار الضغط"><Input dir="ltr" className="text-start" value={v.stressTest.tool ?? ""} placeholder="FurMark 2 / OCCT / Prime95" onChange={(e) => set("stressTest", { ...v.stressTest, tool: e.target.value })} /></Field>
             <Field label="المدة"><InputAdorned dir="ltr" inputMode="numeric" className="text-start" end="دقيقة" value={v.stressTest.durationMin ?? ""} onChange={(e) => set("stressTest", { ...v.stressTest, durationMin: e.target.value.replace(/\D/g, "") })} /></Field>
             <TriState label="النتيجة" value={v.stressTest.passed ?? null} onChange={(ok) => set("stressTest", { ...v.stressTest, passed: ok ?? undefined })} labels={["نجح", "فشل"]} />

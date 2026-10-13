@@ -10,7 +10,7 @@
 | Auth | **Own session auth** (scrypt + DB sessions, HttpOnly cookies) | Email/password is the MVP need. A DB session table gives instant revocation (bans!) and role checks with no vendor lock-in or per-MAU cost, and works offline in dev. It sits behind `lib/auth` so moving to Better Auth or Clerk later is a contained change. |
 | Validation | **Zod** | One schema validates both the client form and the Server Action. Category spec schemas also produce Zod validators. |
 | Storage | `lib/storage` adapter: **local disk** in dev, S3-compatible (Supabase Storage/R2) in prod | Uploads are re-encoded with **sharp** (WebP, max 1600px, EXIF stripped for privacy). |
-| Realtime | Short-interval polling of the thread endpoint | Good enough at MVP scale and works on any host. The chat client is isolated, so it can move to Supabase Realtime or SSE later. |
+| Realtime | 4s polling of the open thread (visible tabs only) | Good enough at MVP scale and works on any host. The chat client is isolated, so it can move to Supabase Realtime or SSE later. |
 | Icons | Lucide | Consistent stroke icons. |
 
 ## Folder structure

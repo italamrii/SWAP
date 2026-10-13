@@ -194,7 +194,7 @@ export default async function ListingPage({ params }: Props) {
                     <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                       لا يعني ذلك وجود مشكلة، لكن ننصحك بطلب صور إضافية أو فيديو للقطعة وهي تعمل، وفحصها بنفسك قبل الدفع.
                     </p>
-                    <ul className="mt-3 grid gap-1.5 text-[13px] text-muted-foreground sm:grid-cols-2">
+                    <ul className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-1.5 text-[13px] text-muted-foreground sm:grid-cols-2">
                       <li>• اطلب لقطة من CrystalDiskInfo أو HWiNFO</li>
                       <li>• شغّل اختبار ضغط لمدة 10 دقائق</li>
                       <li>• تأكد من الرقم التسلسلي والفاتورة</li>
@@ -209,7 +209,7 @@ export default async function ListingPage({ params }: Props) {
 
           <section className="mt-10 rounded-xl border border-border bg-surface p-5">
             <h2 className="flex items-center gap-2 font-semibold"><AlertTriangle className="size-4 text-warning" />قبل ما تشتري</h2>
-            <ul className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+            <ul className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-2 text-sm text-muted-foreground sm:grid-cols-2">
               <li>• لا تحوّل أي مبلغ قبل المعاينة.</li>
               <li>• قابل البائع في مكان عام ومزدحم.</li>
               <li>• شغّل القطعة وتأكد من المواصفات.</li>

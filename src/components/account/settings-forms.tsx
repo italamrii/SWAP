@@ -64,7 +64,7 @@ export function ProfileForm({ initial }: { initial: { displayName: string; usern
         />
       </div>
       <form
-        className="grid gap-4 sm:grid-cols-2"
+        className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault();
           start(async () => {
@@ -131,7 +131,7 @@ export function SecurityForm() {
   return (
     <Card title="الأمان" description="غيّر كلمة المرور، أو سجّل الخروج من الأجهزة الأخرى.">
       <form
-        className="grid gap-4 sm:grid-cols-2"
+        className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault();
           start(async () => {
