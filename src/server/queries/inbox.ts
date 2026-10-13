@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { cache } from "react";
 import { db } from "@/lib/db";
@@ -124,7 +124,7 @@ export async function getMessages(conversationId: string, after?: Date) {
     .leftJoin(swapOffers, eq(swapOffers.offerId, offers.id))
     .leftJoin(offeredCat, eq(offeredCat.id, swapOffers.offeredCategoryId))
     .leftJoin(offeredListing, eq(offeredListing.id, swapOffers.offeredListingId))
-    .where(after ? and(eq(messages.conversationId, conversationId), sql`${messages.createdAt} > ${after}`) : eq(messages.conversationId, conversationId))
+    .where(after ? and(eq(messages.conversationId, conversationId), gt(messages.createdAt, after)) : eq(messages.conversationId, conversationId))
     .orderBy(asc(messages.createdAt))
     .limit(500);
 }

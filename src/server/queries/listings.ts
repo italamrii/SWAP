@@ -18,7 +18,7 @@ import {
 import { PAGE_SIZE, type BrowseFilters } from "@/lib/browse-params";
 import type { ListingCardData } from "../types";
 
-const rootCat = alias(categories, "root_cat");
+export const rootCat = alias(categories, "root_cat");
 
 export const cardColumns = {
   id: listings.id,
