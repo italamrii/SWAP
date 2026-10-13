@@ -14,7 +14,7 @@ export function sarToHalalas(sar: number | string) {
   return Math.round(Number(sar) * 100);
 }
 
-const rtf = new Intl.RelativeTimeFormat("ar-SA", { numeric: "auto" });
+const rtf = new Intl.RelativeTimeFormat("ar-SA-u-nu-latn", { numeric: "auto" });
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 60 * 60 * 24 * 365],
   ["month", 60 * 60 * 24 * 30],
