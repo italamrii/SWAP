@@ -1,4 +1,5 @@
 import { Bell, Plus, Search } from "lucide-react";
+import { VISUAL_PREVIEW, PREVIEW_CATEGORIES } from "@/lib/visual-preview";
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { CategoryIcon } from "@/components/shared/category-icon";
@@ -13,11 +14,12 @@ import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
 export async function SiteHeader({ showCategories = true }: { showCategories?: boolean }) {
-  const [user, categories] = await Promise.all([getCurrentUser(), getCategoryTree()]);
+  const [user, categories] = VISUAL_PREVIEW ? [null, PREVIEW_CATEGORIES] as const : await Promise.all([getCurrentUser(), getCategoryTree()]);
   const counts = user ? await getUnreadCounts(user.id) : { messages: 0, notifications: 0, offers: 0 };
 
   return (
     <>
+      {VISUAL_PREVIEW && <div className="bg-amber-100 px-3 py-2 text-center text-xs font-semibold text-amber-950 dark:bg-amber-950 dark:text-amber-100">معاينة تصميم فقط — جميع الإعلانات والأسعار والتقارير نموذجية، ولا يمكن إتمام عمليات البيع أو التواصل</div>}
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
         <div className="container-page flex h-16 items-center gap-4">
           <Logo />
