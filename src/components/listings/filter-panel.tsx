@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeftRight, BadgeCheck, ChevronDown, HandCoins, SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, NativeSelect } from "@/components/ui/input";
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -21,10 +21,11 @@ export interface FilterPanelProps {
   activeCount: number;
 }
 
-export function FilterPanel(props: FilterPanelProps) {
+export function FilterPanel({ header, ...props }: FilterPanelProps & { header?: React.ReactNode }) {
   return (
-    <aside aria-label="الفلاتر" className="sticky top-32 hidden max-h-[calc(100dvh-9rem)] w-72 shrink-0 overflow-y-auto pe-2 pb-8 scrollbar-none lg:block">
-      <FilterBody {...props} />
+    <aside aria-label="الفلاتر" className="sticky top-32 hidden max-h-[calc(100dvh-9rem)] w-64 shrink-0 overflow-y-auto pe-1 pb-8 scrollbar-none lg:block xl:w-72">
+      {header}
+      <Suspense fallback={null}><FilterBody {...props} /></Suspense>
     </aside>
   );
 }

@@ -11,22 +11,24 @@ import { cityLabel } from "@/lib/catalog/cities";
 import { formatMonthYear } from "@/lib/format";
 import { getFavoriteIdSet } from "@/server/queries/listings";
 import { getSellerByUsername } from "@/server/queries/sellers";
+import { VISUAL_PREVIEW, previewSeller } from "@/lib/visual-preview";
 
 type Props = { params: Promise<{ username: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
-  const data = await getSellerByUsername(username);
+  const data = VISUAL_PREVIEW ? previewSeller(username) : await getSellerByUsername(username);
   if (!data) return { title: "البائع غير موجود" };
+  if (VISUAL_PREVIEW) return { title: `${data.seller.displayName} (ملف نموذجي)`, robots: { index: false } };
   return { title: `${data.seller.displayName} (@${data.seller.username})`, description: `إعلانات ${data.seller.displayName} في سواب: ${data.stats.active} إعلان نشط.`, alternates: { canonical: `/seller/${data.seller.username}` } };
 }
 
 export default async function SellerPage({ params }: Props) {
   const { username } = await params;
-  const [data, user] = await Promise.all([getSellerByUsername(username), getCurrentUser()]);
+  const [data, user] = VISUAL_PREVIEW ? [previewSeller(username), null] : await Promise.all([getSellerByUsername(username), getCurrentUser()]);
   if (!data) notFound();
   const { seller, stats, items } = data;
-  const saved = await getFavoriteIdSet(user?.id, items.map((i) => i.id));
+  const saved = VISUAL_PREVIEW ? new Set<string>() : await getFavoriteIdSet(user?.id, items.map((i) => i.id));
   const active = items.filter((i) => i.status === "active");
   const sold = items.filter((i) => i.status === "sold");
 
@@ -49,7 +51,7 @@ export default async function SellerPage({ params }: Props) {
               </div>
             </div>
           </div>
-          {user?.id !== seller.id && <div className="md:self-start"><ReportUserButton userId={seller.id} signedIn={!!user} username={seller.username} /></div>}
+          {VISUAL_PREVIEW ? <span className="self-start rounded-md bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">ملف بائع نموذجي — شخصية غير حقيقية</span> : user?.id !== seller.id && <div className="md:self-start"><ReportUserButton userId={seller.id} signedIn={!!user} username={seller.username} /></div>}
         </div>
         {seller.bio && <p className="relative mt-5 max-w-2xl text-[15px] leading-relaxed">{seller.bio}</p>}
         <dl className="relative mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -76,7 +78,7 @@ export default async function SellerPage({ params }: Props) {
       <section className="mt-10">
         <h2 className="mb-5 text-xl font-bold">الإعلانات النشطة <span className="text-base font-normal text-muted-foreground">({active.length})</span></h2>
         {active.length === 0 ? <EmptyState icon={Package} title="لا توجد إعلانات نشطة حاليًا" compact /> : (
-          <ListingGrid>{active.map((l) => <ListingCard key={l.id} listing={l} saved={saved.has(l.id)} />)}</ListingGrid>
+          <ListingGrid>{active.map((l) => <ListingCard key={l.id} listing={l} saved={saved.has(l.id)} showFavorite={!VISUAL_PREVIEW} />)}</ListingGrid>
         )}
       </section>
       {sold.length > 0 && (

@@ -37,9 +37,11 @@ export function useUrlFilters() {
   const clearAll = useCallback(() => {
     const q = params.get("q");
     const sort = params.get("sort");
+    const view = params.get("view");
     const sp = new URLSearchParams();
     if (q) sp.set("q", q);
     if (sort) sp.set("sort", sort);
+    if (view) sp.set("view", view);
     start(() => router.replace(sp.toString() ? `${pathname}?${sp}` : pathname, { scroll: false }));
   }, [params, pathname, router]);
 

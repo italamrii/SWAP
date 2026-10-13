@@ -58,9 +58,9 @@ export function ImageGallery({ images, title, icon, overlay }: { images: Img[]; 
         aria-roledescription="معرض صور"
         aria-label={`صور ${title}`}
       >
-        <div ref={track} className="flex aspect-[4/3] snap-x snap-mandatory overflow-x-auto scroll-smooth scrollbar-none">
+        <div ref={track} className="flex aspect-[4/3] snap-x snap-mandatory overflow-x-auto scroll-smooth scrollbar-none lg:aspect-[16/10]">
           {images.map((img, i) => (
-            <button key={img.id} data-i={i} type="button" onClick={() => setZoom(true)} className="relative aspect-[4/3] w-full shrink-0 snap-center cursor-zoom-in" aria-label={`عرض الصورة ${i + 1} بحجم كامل`}>
+            <button key={img.id} data-i={i} type="button" onClick={() => setZoom(true)} className="relative aspect-[4/3] w-full shrink-0 snap-center cursor-zoom-in lg:aspect-[16/10]" aria-label={`عرض الصورة ${i + 1} بحجم كامل`}>
               <ListingImage src={img.url} alt={img.alt ?? title} icon={icon} priority={i === 0} sizes="(min-width: 1024px) 60vw, 100vw" />
             </button>
           ))}
