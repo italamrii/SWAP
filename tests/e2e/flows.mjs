@@ -114,6 +114,8 @@ describe("header & navigation drawer", () => {
     const header = p.locator('[data-testid="site-header"]');
     await header.locator('input[role="combobox"]').waitFor();
     await header.locator('button[aria-label^="المدينة"]').waitFor();
+    // The category bar streams in behind a Suspense boundary — wait for it before counting.
+    await header.locator('nav[aria-label="الأقسام"] ul a').first().waitFor();
     assert.equal(await header.locator('nav[aria-label="الأقسام"] ul a').count(), 10);
     await header.getByRole("link", { name: "أضف إعلان" }).waitFor();
     const h = await header.evaluate((el) => el.getBoundingClientRect().height);
