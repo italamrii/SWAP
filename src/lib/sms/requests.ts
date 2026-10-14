@@ -1,6 +1,6 @@
 /** Pure request builders for each SMS provider (unit-tested; no network here). */
 type Env = Record<string, string | undefined>;
-export type HttpRequest = { url: string; init: { method: "POST"; headers: Record<string, string>; body: URLSearchParams } };
+export type HttpRequest = { url: string; init: { method: "POST"; headers: Record<string, string>; body: URLSearchParams | string } };
 
 /** Unifonic: form-encoded POST /rest/SMS/messages; recipient in international format without "+". */
 export function unifonicRequest(env: Env, to: string, body: string): HttpRequest {
@@ -26,6 +26,26 @@ export function twilioRequest(env: Env, to: string, body: string): HttpRequest {
       method: "POST",
       headers: { Authorization: `Basic ${Buffer.from(`${sid}:${env.TWILIO_AUTH_TOKEN ?? ""}`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
       body: form,
+    },
+  };
+}
+
+/** Taqnyat SMS REST v1 — bearer token in header, JSON body, Saudi number without '+'. */
+export function taqnyatRequest(env: Env, to: string, body: string): HttpRequest {
+  return {
+    url: "https://api.taqnyat.sa/v1/messages",
+    init: {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.TAQNYAT_BEARER_TOKEN ?? ""}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        recipients: [to.replace(/^\+/, "")],
+        body,
+        sender: env.TAQNYAT_SENDER_ID ?? "",
+      }),
     },
   };
 }
