@@ -1,7 +1,9 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
+import { dhashFromPixels } from "@/lib/guard/rules";
 import { shortId } from "@/lib/slug";
 
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
@@ -17,6 +19,14 @@ export interface StoredFile {
   width?: number;
   height?: number;
   contentType: string;
+  /** 64-bit fingerprint (hex) for SWAP Guard duplicate / evidence-reuse checks: perceptual for images, exact for PDFs. */
+  dhash?: string;
+}
+
+/** dHash: 9×8 grayscale thumbnail, one bit per horizontal gradient. Robust to resize/re-encode. */
+export async function imageFingerprint(input: Buffer): Promise<string> {
+  const px = await sharp(input).rotate().grayscale().resize(9, 8, { fit: "fill" }).raw().toBuffer();
+  return dhashFromPixels(px);
 }
 
 async function put(key: string, body: Buffer, contentType: string): Promise<string> {
@@ -65,7 +75,7 @@ export async function storeImage(file: File, folder: string): Promise<StoredFile
     .toBuffer({ resolveWithObject: true });
   const key = `${folder}/${new Date().toISOString().slice(0, 7)}/${shortId(12)}.webp`;
   const url = await put(key, data, "image/webp");
-  return { url, key, width: info.width, height: info.height, contentType: "image/webp" };
+  return { url, key, width: info.width, height: info.height, contentType: "image/webp", dhash: await imageFingerprint(data) };
 }
 
 export async function storeDocument(file: File, folder: string): Promise<StoredFile> {
@@ -75,5 +85,6 @@ export async function storeDocument(file: File, folder: string): Promise<StoredF
   if (buf.subarray(0, 5).toString() !== "%PDF-") throw new Error("الملف ليس PDF صالحًا");
   const key = `${folder}/${new Date().toISOString().slice(0, 7)}/${shortId(12)}.pdf`;
   const url = await put(key, buf, "application/pdf");
-  return { url, key, contentType: "application/pdf" };
+  // Documents get an exact-content fingerprint (first 64 bits of SHA-256) so re-used evidence is still caught.
+  return { url, key, contentType: "application/pdf", dhash: createHash("sha256").update(buf).digest("hex").slice(0, 16) };
 }

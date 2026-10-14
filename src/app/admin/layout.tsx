@@ -6,13 +6,13 @@ import { LogoMark } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Avatar } from "@/components/ui/avatar";
 import { requireStaff } from "@/lib/auth/guards";
-import { getAdminOverview } from "@/server/queries/admin";
+import { getAdminOverview, getGuardCounts } from "@/server/queries/admin";
 
 export const metadata: Metadata = { title: { default: "الإدارة", template: "%s | إدارة سواب" }, robots: { index: false } };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const staff = await requireStaff();
-  const { counts } = await getAdminOverview();
+  const [{ counts }, guard] = await Promise.all([getAdminOverview(), getGuardCounts()]);
   return (
     <div className="min-h-dvh bg-background lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
       <aside className="bg-graphite text-white lg:sticky lg:top-0 lg:h-dvh dark:bg-[#0a0c0e]">
@@ -24,7 +24,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/" className="flex items-center gap-1 text-xs text-white/60 hover:text-white lg:hidden"><ArrowRight className="size-3.5" />الموقع</Link>
         </div>
         <div className="px-4 pb-3 lg:px-3">
-          <AdminNav counts={{ pending: counts.pending, inspections: counts.pendingInspections, reports: counts.openReports }} isAdmin={staff.role === "admin"} />
+          <AdminNav counts={{ pending: counts.pending, inspections: counts.pendingInspections, reports: counts.openReports, guard }} isAdmin={staff.role === "admin"} />
         </div>
         <div className="mt-auto hidden border-t border-white/10 p-4 lg:absolute lg:inset-x-0 lg:bottom-0 lg:block">
           <div className="flex items-center gap-2.5">

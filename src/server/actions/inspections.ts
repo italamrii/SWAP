@@ -4,10 +4,11 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { assertUser } from "@/lib/auth/guards";
+import { assertEligible } from "@/lib/auth/guards";
 import { db } from "@/lib/db";
 import { inspectionAttachments, inspectionReports, inspections, listings } from "@/lib/db/schema";
 import { inspectionPayloadSchema, LEVEL_FOR_SOURCE, submissionProblems, type InspectionPayload } from "@/lib/validation/inspection";
+import { checkEvidenceReuse } from "../services/guard";
 import { run, zodFail, type Result } from "./_utils";
 
 function newVerificationCode() {
@@ -19,7 +20,7 @@ function newVerificationCode() {
 /** Owner-only: get the editable inspection for a listing (draft or rejected), or create a new draft. */
 export async function startInspection(listingId: string): Promise<Result<{ inspectionId: string }>> {
   return run(async () => {
-    const user = await assertUser();
+    const user = await assertEligible();
     if (!z.string().uuid().safeParse(listingId).success) return { ok: false, error: "طلب غير صالح" };
     const [l] = await db.select({ sellerId: listings.sellerId, status: listings.status }).from(listings).where(eq(listings.id, listingId)).limit(1);
     if (!l || l.sellerId !== user.id) return { ok: false, error: "الإعلان غير موجود" };
@@ -39,7 +40,7 @@ export async function startInspection(listingId: string): Promise<Result<{ inspe
 
 export async function saveInspection(inspectionId: string, input: InspectionPayload, submit: boolean): Promise<Result> {
   const res = await run<undefined>(async () => {
-    const user = await assertUser();
+    const user = await assertEligible();
     if (!z.string().uuid().safeParse(inspectionId).success) return { ok: false, error: "طلب غير صالح" };
     const [insp] = await db.select().from(inspections).where(eq(inspections.id, inspectionId)).limit(1);
     if (!insp || insp.submittedById !== user.id) return { ok: false, error: "التقرير غير موجود" };
@@ -72,6 +73,8 @@ export async function saveInspection(inspectionId: string, input: InspectionPayl
       await tx.delete(inspectionAttachments).where(eq(inspectionAttachments.inspectionId, inspectionId));
       if (d.attachments.length) await tx.insert(inspectionAttachments).values(d.attachments.map((a) => ({ inspectionId, url: a.url, kind: a.kind, label: a.label })));
     });
+    // Evidence uploaded by another account (re-used screenshots, borrowed reports) is surfaced to the reviewer.
+    if (submit) await checkEvidenceReuse(inspectionId, user.id, d.attachments.map((a) => a.url));
     revalidatePath("/account/verification");
     return { ok: true, message: submit ? "أرسلنا تقريرك للمراجعة" : "حفظنا المسودة" };
   });
@@ -86,7 +89,7 @@ async function hasAgentPayload(inspectionId: string) {
 
 export async function discardDraft(inspectionId: string): Promise<Result> {
   return run(async () => {
-    const user = await assertUser();
+    const user = await assertEligible();
     await db.delete(inspections).where(and(eq(inspections.id, inspectionId), eq(inspections.submittedById, user.id), eq(inspections.status, "draft")));
     revalidatePath("/account/verification");
     return { ok: true, message: "حذفنا المسودة" };

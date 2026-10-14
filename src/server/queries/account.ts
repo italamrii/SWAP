@@ -31,6 +31,7 @@ export async function getMyListings(userId: string) {
       moderationNote: listings.moderationNote,
       createdAt: listings.createdAt,
       pendingInspection: sql<boolean>`exists (select 1 from ${inspections} i where i.listing_id = ${listings.id} and i.status = 'submitted')`,
+      guardHeld: sql<boolean>`exists (select 1 from guard_flags g where g.subject_type = 'listing' and g.subject_id = ${listings.id}::text and g.status = 'open' and g.holding)`,
     })
     .from(listings)
     .innerJoin(rootCat, eq(rootCat.id, listings.categoryId))

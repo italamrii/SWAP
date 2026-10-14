@@ -25,7 +25,11 @@ export default async function MyListingsPage({ searchParams }: { searchParams: P
       <PageHeader title="إعلاناتي" description="أدِر إعلاناتك، حدّث الأسعار، ووثّقها بتقارير الفحص." actions={<Button asChild><Link href="/account/listings/new"><Plus />إعلان جديد</Link></Button>} />
       {created && (
         <div className="rounded-xl border border-primary/25 bg-primary-soft/60 p-4 text-sm text-primary-ink">
-          {created === "pending" ? "استلمنا إعلانك! يراجعه فريق سواب عادةً خلال ساعات قليلة، وبنبلّغك أول ما يُنشر." : "تم نشر إعلانك 🎉 شاركه مع أصحابك، ولا تنسَ توثيقه بتقرير فحص."}
+          {created === "pending"
+            ? "استلمنا إعلانك! يراجعه فريق سواب عادةً خلال ساعات قليلة، وبنبلّغك أول ما يُنشر."
+            : created === "guard"
+              ? "استلمنا إعلانك، ورصد SWAP Guard ما يحتاج مراجعة قبل النشر. افتح «تفاصيل المراجعة» في الإعلان لإرسال إثبات الحيازة أو تقديم اعتراض."
+              : "تم نشر إعلانك 🎉 شاركه مع أصحابك، ولا تنسَ توثيقه بتقرير فحص."}
         </div>
       )}
       <div className="-mx-4 flex gap-1 overflow-x-auto px-4 scrollbar-none sm:mx-0 sm:px-0" role="tablist">

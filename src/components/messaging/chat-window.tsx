@@ -10,7 +10,9 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatSAR, formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { fetchNewMessages, sendMessage } from "@/server/actions/messages";
+import { GuardNotice, useGuardedAction } from "@/components/guard/guard-ui";
+import { signalTitle } from "@/lib/guard/rules";
+import { acknowledgeConversation, fetchNewMessages, sendMessage } from "@/server/actions/messages";
 import type { ThreadMessage } from "@/server/queries/inbox";
 import { OfferCard } from "./offer-card";
 
@@ -24,13 +26,31 @@ export interface ChatWindowProps {
   listing: { slug: string; title: string; price: number; coverImageUrl: string | null; status: string };
   initialMessages: ThreadMessage[];
   sellerPhone: string | null;
+  /** Verified Saudi number — required to send (the server enforces it too). */
+  canSend: boolean;
+  /** SWAP Guard codes this viewer already acknowledged for the conversation. */
+  ackedCodes: string[];
 }
 
-export function ChatWindow({ conversationId, meId, role, other, listing, initialMessages, sellerPhone }: ChatWindowProps) {
+export function ChatWindow({ conversationId, meId, role, other, listing, initialMessages, sellerPhone, canSend, ackedCodes }: ChatWindowProps) {
   const router = useRouter();
   const [messages, setMessages] = useState(initialMessages);
   const [body, setBody] = useState("");
+  const [acked, setAcked] = useState(() => new Set(ackedCodes));
   const [pending, start] = useTransition();
+  // Warnings come from the *other* party's messages; the composer waits until they are acknowledged.
+  const otherCodes = [...new Set(messages.filter((m) => m.senderId !== meId).flatMap((m) => m.guardCodes ?? []))];
+  const pendingCodes = otherCodes.filter((c) => !acked.has(c));
+  const guard = useGuardedAction<Awaited<ReturnType<typeof sendMessage>>>((r) => {
+    if (!r.ok) {
+      toast.error(r.error);
+      return;
+    }
+    setBody("");
+    if (r.data) setMessages((m) => (m.some((x) => x.id === r.data!.id) ? m : [...m, r.data!]));
+    setAcked(new Set([...acked, ...otherCodes]));
+    router.refresh();
+  });
   const scroller = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
 
@@ -56,18 +76,16 @@ export function ChatWindow({ conversationId, meId, role, other, listing, initial
 
   function send() {
     const text = body.trim();
-    if (!text) return;
-    setBody("");
+    if (!text || pendingCodes.length) return;
     atBottom.current = true;
+    guard.exec((ack) => sendMessage({ conversationId, body: text, ack }));
+  }
+
+  function acknowledgeWarnings() {
     start(async () => {
-      const r = await sendMessage({ conversationId, body: text });
-      if (!r.ok) {
-        toast.error(r.error);
-        setBody(text);
-        return;
-      }
-      if (r.data) setMessages((m) => (m.some((x) => x.id === r.data!.id) ? m : [...m, r.data!]));
-      router.refresh();
+      const r = await acknowledgeConversation(conversationId);
+      if (r.ok) setAcked(new Set([...acked, ...pendingCodes]));
+      else toast.error(r.error);
     });
   }
 
@@ -123,11 +141,17 @@ export function ChatWindow({ conversationId, meId, role, other, listing, initial
                   <OfferCard message={m} meId={meId} listingPrice={listing.price} onChanged={() => { void refresh(); router.refresh(); }} />
                 </div>
               ) : (
-                <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
-                  <div className={cn("max-w-[80%] rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed whitespace-pre-wrap shadow-xs", mine ? "rounded-ee-md bg-primary text-primary-foreground" : "rounded-es-md border border-border bg-surface")}>
+                <div className={cn("flex flex-col", mine ? "items-end" : "items-start")}>
+                  <div className={cn("max-w-[80%] rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed whitespace-pre-wrap shadow-xs", mine ? "rounded-ee-md bg-primary text-primary-foreground" : "rounded-es-md border border-border bg-surface", !mine && m.guardCodes?.length ? "border-amber-400/70" : "")}>
                     {m.body}
                     <span className={cn("ms-2 inline-block align-bottom text-[10px]", mine ? "text-primary-foreground/70" : "text-subtle-foreground")}>{formatTime(m.createdAt)}</span>
                   </div>
+                  {!mine && m.guardCodes?.length > 0 && (
+                    <p className="mt-1 flex max-w-[80%] items-center gap-1 text-[11.5px] font-medium text-warning" data-testid="message-guard">
+                      <ShieldAlert className="size-3.5 shrink-0" aria-hidden />
+                      {m.guardCodes.map(signalTitle).join(" · ")}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -137,6 +161,16 @@ export function ChatWindow({ conversationId, meId, role, other, listing, initial
 
       {/* Composer */}
       <div className="border-t border-border p-3 pb-safe">
+        {!canSend ? (
+          <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-center text-[13px] text-muted-foreground" data-testid="chat-phone-required">
+            وثّق رقم جوالك السعودي للرد في المحادثات. <Link href={`/account/verify-phone?next=/account/messages/${conversationId}`} className="font-semibold text-primary-ink hover:underline">وثّق الآن</Link>
+          </p>
+        ) : pendingCodes.length > 0 ? (
+          <GuardNotice codes={pendingCodes} title="تنبيه SWAP Guard عن هذه المحادثة">
+            <Button size="sm" className="mt-3" onClick={acknowledgeWarnings} loading={pending} data-testid="guard-ack">فهمت، أكمل المحادثة</Button>
+          </GuardNotice>
+        ) : (
+        <>
         {hasPhone && <p className="mb-2 text-[12px] text-warning">تنبيه: مشاركة رقمك تكشفه للطرف الآخر. ننصح بإبقاء التواصل داخل سواب.</p>}
         <form
           onSubmit={(e) => {
@@ -160,11 +194,14 @@ export function ChatWindow({ conversationId, meId, role, other, listing, initial
             aria-label="نص الرسالة"
             className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-input bg-surface px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-3 focus:ring-primary/15 [field-sizing:content]"
           />
-          <Button type="submit" size="icon" className="size-11 rounded-full" disabled={!body.trim() || pending} aria-label="إرسال">
+          <Button type="submit" size="icon" className="size-11 rounded-full" disabled={!body.trim() || guard.pending} aria-label="إرسال">
             <SendHorizontal className="size-5 rtl:-scale-x-100" />
           </Button>
         </form>
+        </>
+        )}
       </div>
+      {guard.dialog}
     </div>
   );
 }

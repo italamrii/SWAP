@@ -4,6 +4,7 @@ import { ChatWindow } from "@/components/messaging/chat-window";
 import { ConversationList } from "@/components/messaging/conversation-list";
 import { requireUser } from "@/lib/auth/guards";
 import { getConversation, getConversations } from "@/server/queries/inbox";
+import { acknowledgedCodes } from "@/server/services/guard";
 
 export const metadata: Metadata = { title: "محادثة" };
 
@@ -11,7 +12,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   const user = await requireUser(`/account/messages/${id}`);
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
-  const [conv, items] = await Promise.all([getConversation(id, user.id), getConversations(user.id)]);
+  const [conv, items, acked] = await Promise.all([getConversation(id, user.id), getConversations(user.id), acknowledgedCodes(user.id, "conversation", id)]);
   if (!conv) notFound();
   const other = conv.role === "buyer" ? { name: conv.sellerName, username: conv.sellerUsername } : { name: conv.buyerName, username: conv.buyerUsername };
   return (
@@ -28,6 +29,8 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
           listing={conv.listing}
           initialMessages={conv.messages}
           sellerPhone={conv.sellerShowPhone ? conv.sellerPhone : null}
+          canSend={user.eligible}
+          ackedCodes={[...acked]}
         />
       </div>
     </div>

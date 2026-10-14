@@ -19,7 +19,7 @@ import { deleteListing, setListingStatus } from "@/server/actions/listings";
 
 export interface MyListing {
   id: string; slug: string; title: string; price: number; status: string; coverImageUrl: string | null; categoryIcon: string; categoryNameAr: string;
-  verificationLevel: VerificationLevel; viewCount: number; favoriteCount: number; moderationNote: string | null; bumpedAt: Date; pendingInspection: boolean;
+  verificationLevel: VerificationLevel; viewCount: number; favoriteCount: number; moderationNote: string | null; bumpedAt: Date; pendingInspection: boolean; guardHeld?: boolean;
 }
 
 export function MyListingRow({ l }: { l: MyListing }) {
@@ -79,6 +79,11 @@ export function MyListingRow({ l }: { l: MyListing }) {
           <span className="text-xs text-subtle-foreground">{l.categoryNameAr} · {timeAgo(l.bumpedAt)}</span>
         </div>
         {l.status === "rejected" && l.moderationNote && <p className="mt-2 rounded-md bg-danger-soft px-2.5 py-1.5 text-[12.5px] text-danger">سبب الرفض: {l.moderationNote}</p>}
+        {(l.guardHeld || (l.status === "rejected" && l.moderationNote?.startsWith("SWAP Guard"))) && (
+          <Link href={`/account/listings/${l.id}/guard`} data-testid="guard-review-link" className="mt-2 flex items-center gap-1.5 rounded-md bg-warning-soft px-2.5 py-1.5 text-[12.5px] font-medium text-warning hover:underline">
+            <ShieldCheck className="size-3.5" />قيد مراجعة SWAP Guard — اعرض التفاصيل، أرسل إثبات الحيازة أو قدّم اعتراضًا
+          </Link>
+        )}
       </div>
       <ConfirmDialog
         open={confirmDelete}

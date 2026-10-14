@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 export type UploadedImage = { url: string; width?: number; height?: number };
 
-export async function uploadFile(file: File, kind: "listing" | "inspection" | "avatar") {
+export async function uploadFile(file: File, kind: "listing" | "inspection" | "avatar" | "proof") {
   const fd = new FormData();
   fd.set("file", file);
   fd.set("kind", kind);

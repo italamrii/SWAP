@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { abuseReports } from "@/lib/db/schema";
 import { rateLimit } from "@/lib/rate-limit";
 import { reportSchema } from "@/lib/validation/offers";
+import { onListingReported } from "../services/guard";
 import { run, zodFail, type Result } from "./_utils";
 
 export async function reportContent(input: { targetType: string; targetId: string; reason: string; details?: string }): Promise<Result> {
@@ -22,6 +23,7 @@ export async function reportContent(input: { targetType: string; targetId: strin
       .limit(1);
     if (dup) return { ok: true, message: "بلاغك السابق قيد المراجعة، شكرًا لك." };
     await db.insert(abuseReports).values({ reporterId: user.id, targetType: d.targetType, targetId: d.targetId, reason: d.reason, details: d.details });
+    if (d.targetType === "listing") await onListingReported(d.targetId);
     return { ok: true, message: "وصلنا بلاغك. سيراجعه فريق سواب خلال 24 ساعة." };
   });
 }

@@ -29,9 +29,9 @@ export async function ensureConversation(listingId: string, buyerId: string) {
   return { id: again.id, listing } as const;
 }
 
-export async function appendMessage(conversationId: string, senderId: string | null, body: string, kind: "text" | "offer" | "system" = "text", offerId?: string) {
+export async function appendMessage(conversationId: string, senderId: string | null, body: string, kind: "text" | "offer" | "system" = "text", offerId?: string, guardCodes: string[] = []) {
   const now = new Date();
-  const [msg] = await db.insert(messages).values({ conversationId, senderId, body, kind, offerId, createdAt: now }).returning();
+  const [msg] = await db.insert(messages).values({ conversationId, senderId, body, kind, offerId, guardCodes, createdAt: now }).returning();
   const [c] = await db.select().from(conversations).where(eq(conversations.id, conversationId)).limit(1);
   const patch: Partial<typeof conversations.$inferInsert> = { lastMessageAt: now, lastMessagePreview: body.slice(0, 140) };
   if (senderId === c.buyerId) patch.buyerLastReadAt = now;
@@ -41,6 +41,11 @@ export async function appendMessage(conversationId: string, senderId: string | n
   }
   await db.update(conversations).set(patch).where(eq(conversations.id, conversationId));
   return { msg, conversation: c };
+}
+
+export async function hasConversation(listingId: string, buyerId: string) {
+  const [c] = await db.select({ id: conversations.id }).from(conversations).where(and(eq(conversations.listingId, listingId), eq(conversations.buyerId, buyerId))).limit(1);
+  return !!c;
 }
 
 export async function senderName(userId: string) {

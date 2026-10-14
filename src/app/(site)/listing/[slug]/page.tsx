@@ -13,6 +13,7 @@ import { listings, listingViews } from "@/lib/db/schema";
 import { formatSAR } from "@/lib/format";
 import { getCategoryTree } from "@/server/queries/categories";
 import { getFavoriteIdSet, getListingBySlug, getSellerOtherListings, getSimilarListings } from "@/server/queries/listings";
+import { listingDealWarnings } from "@/server/services/guard";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -60,7 +61,7 @@ export default async function ListingPage({ params }: Props) {
     });
   }
 
-  const [similar, more, saved, tree, myListings] = await Promise.all([
+  const [similar, more, saved, tree, myListings, guardWarnings] = await Promise.all([
     getSimilarListings(l.id, category.id),
     getSellerOtherListings(seller.id, l.id),
     getFavoriteIdSet(user?.id, [l.id]),
@@ -68,6 +69,7 @@ export default async function ListingPage({ params }: Props) {
     user && !isOwner && l.acceptsSwap
       ? db.select({ id: listings.id, title: listings.title }).from(listings).where(and(eq(listings.sellerId, user.id), eq(listings.status, "active"))).limit(30)
       : Promise.resolve([]),
+    isOwner || l.status !== "active" ? Promise.resolve([]) : listingDealWarnings(l.id),
   ]);
   const savedIds = await getFavoriteIdSet(user?.id, [...similar, ...more].map((x) => x.id));
   return (
@@ -79,6 +81,8 @@ export default async function ListingPage({ params }: Props) {
       saved={saved.has(l.id)}
       isOwner={isOwner}
       signedIn={!!user}
+      eligible={!!user?.eligible}
+      guardWarnings={guardWarnings.map((w) => w.code)}
       myListings={myListings}
       categories={tree.map((c) => ({ id: c.id, nameAr: c.nameAr }))}
     />

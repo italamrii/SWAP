@@ -17,7 +17,7 @@ import { closeTicket, createSubcategory, deleteBanner, moderateListing, moderate
 
 type R = { ok: boolean; error?: string; message?: string };
 
-function useRun() {
+export function useRun() {
   const router = useRouter();
   const [pending, start] = useTransition();
   const run = (fn: () => Promise<R>, after?: () => void) =>
@@ -32,7 +32,7 @@ function useRun() {
   return { pending, run };
 }
 
-function NoteDialog({ open, onOpenChange, title, description, confirmLabel, destructive, required, onSubmit, children }: { open: boolean; onOpenChange: (o: boolean) => void; title: string; description?: string; confirmLabel: string; destructive?: boolean; required?: boolean; onSubmit: (note: string) => void; children?: React.ReactNode }) {
+export function NoteDialog({ open, onOpenChange, title, description, confirmLabel, destructive, required, onSubmit, children }: { open: boolean; onOpenChange: (o: boolean) => void; title: string; description?: string; confirmLabel: string; destructive?: boolean; required?: boolean; onSubmit: (note: string) => void; children?: React.ReactNode }) {
   const [note, setNote] = useState("");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

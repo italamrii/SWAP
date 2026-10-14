@@ -15,11 +15,15 @@ import { REPORT_REASONS } from "@/lib/validation/offers";
 import { contactSeller } from "@/server/actions/messages";
 import { makePriceOffer, makeSwapOffer } from "@/server/actions/offers";
 import { reportContent } from "@/server/actions/reports";
+import { GuardNotice, useGuardedAction } from "@/components/guard/guard-ui";
 import { FavoriteButton } from "./favorite-button";
 
 export interface ListingActionsProps {
   listing: { id: string; slug: string; title: string; price: number; isNegotiable: boolean; acceptsSwap: boolean; swapDetails: string | null };
   signedIn: boolean;
+  eligible?: boolean;
+  /** SWAP Guard deal warnings for this listing (new seller, reports, unrealistic price). */
+  guardWarnings?: string[];
   saved: boolean;
   sellerPhone: string | null;
   myListings: { id: string; title: string }[];
@@ -28,12 +32,18 @@ export interface ListingActionsProps {
 
 type DialogKind = "message" | "offer" | "swap" | "report" | null;
 
-export function useListingDialogs(signedIn: boolean, slug: string) {
+export function useListingDialogs(signedIn: boolean, slug: string, eligible = false) {
   const router = useRouter();
   const [open, setOpen] = useState<DialogKind>(null);
   const openDialog = (k: Exclude<DialogKind, null>) => {
+    const back = encodeURIComponent(`/listing/${slug}`);
     if (!signedIn) {
-      router.push(`/sign-in?next=${encodeURIComponent(`/listing/${slug}`)}`);
+      router.push(`/sign-in?next=${back}`);
+      return;
+    }
+    // Reporting stays open to every signed-in user; dealing needs a verified Saudi number.
+    if (!eligible && k !== "report") {
+      router.push(`/account/verify-phone?next=${back}`);
       return;
     }
     setOpen(k);
@@ -43,7 +53,7 @@ export function useListingDialogs(signedIn: boolean, slug: string) {
 
 export function ListingActions(props: ListingActionsProps) {
   const { listing, signedIn, saved, sellerPhone } = props;
-  const { open, setOpen, openDialog } = useListingDialogs(signedIn, listing.slug);
+  const { open, setOpen, openDialog } = useListingDialogs(signedIn, listing.slug, props.eligible);
   const [showPhone, setShowPhone] = useState(false);
 
   return (
@@ -73,7 +83,7 @@ export function ListingActions(props: ListingActionsProps) {
 
 export function MobileActionBar(props: ListingActionsProps) {
   const { listing, signedIn } = props;
-  const { open, setOpen, openDialog } = useListingDialogs(signedIn, listing.slug);
+  const { open, setOpen, openDialog } = useListingDialogs(signedIn, listing.slug, props.eligible);
   return (
     <>
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-4 pt-3 backdrop-blur lg:hidden pb-safe">
@@ -106,20 +116,20 @@ function ListingDialogs(props: ListingActionsProps & { open: DialogKind; setOpen
 
 const QUICK_MESSAGES = ["السلام عليكم، هل الإعلان لا يزال متاحًا؟", "ممكن أعاين القطعة قبل الشراء؟", "وش آخر سعر؟", "ممكن صور إضافية أو فيديو وهي تشتغل؟"];
 
-function MessageDialog({ listing, isOpen, onClose }: ListingActionsProps & { isOpen: boolean; onClose: () => void }) {
+function MessageDialog({ listing, isOpen, onClose, guardWarnings = [] }: ListingActionsProps & { isOpen: boolean; onClose: () => void }) {
   const router = useRouter();
   const [body, setBody] = useState("");
   const [error, setError] = useState<string>();
-  const [pending, start] = useTransition();
+  const guard = useGuardedAction<Awaited<ReturnType<typeof contactSeller>>>((res) => {
+    if (!res.ok) return setError(res.error);
+    toast.success("وصلت رسالتك للبائع");
+    onClose();
+    router.push(`/account/messages/${res.data!.conversationId}`);
+  });
+  const pending = guard.pending;
   const hasPhone = /(?:\+?966|0)?5\d{8}/.test(body.replace(/[\s-]/g, ""));
   function submit() {
-    start(async () => {
-      const res = await contactSeller({ listingId: listing.id, body });
-      if (!res.ok) return setError(res.error);
-      toast.success("وصلت رسالتك للبائع");
-      onClose();
-      router.push(`/account/messages/${res.data!.conversationId}`);
-    });
+    guard.exec((ack) => contactSeller({ listingId: listing.id, body, ack }));
   }
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
@@ -128,6 +138,7 @@ function MessageDialog({ listing, isOpen, onClose }: ListingActionsProps & { isO
           <DialogTitle>راسل البائع</DialogTitle>
           <DialogDescription>بخصوص «{listing.title}». رقمك يبقى مخفيًا.</DialogDescription>
         </DialogHeader>
+        <GuardNotice codes={guardWarnings} className="mb-3" />
         <div className="mb-3 flex flex-wrap gap-1.5">
           {QUICK_MESSAGES.map((m) => (
             <button key={m} type="button" onClick={() => setBody(m)} className="rounded-full border border-border bg-surface-2 px-3 py-1.5 text-[12.5px] transition hover:border-border-strong">{m}</button>
@@ -137,35 +148,37 @@ function MessageDialog({ listing, isOpen, onClose }: ListingActionsProps & { isO
           <Textarea value={body} onChange={(e) => { setBody(e.target.value); setError(undefined); }} placeholder="اكتب رسالتك…" rows={4} maxLength={2000} aria-label="نص الرسالة" autoFocus />
         </Field>
         {hasPhone && <p className="mt-2 text-[13px] text-warning">تنبيه: يبدو أنك تشارك رقم جوال. ننصح بإبقاء التواصل داخل سواب لحماية خصوصيتك.</p>}
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>إلغاء</Button>
-          <Button onClick={submit} loading={pending} disabled={!body.trim()}>إرسال</Button>
-        </DialogFooter>
+        {guard.inline ?? (
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>إلغاء</Button>
+            <Button onClick={submit} loading={pending} disabled={!body.trim()}>إرسال</Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
 }
 
-function OfferDialog({ listing, isOpen, onClose }: ListingActionsProps & { isOpen: boolean; onClose: () => void }) {
+function OfferDialog({ listing, isOpen, onClose, guardWarnings = [] }: ListingActionsProps & { isOpen: boolean; onClose: () => void }) {
   const router = useRouter();
   const priceSar = Math.round(listing.price / 100);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
-  const [pending, start] = useTransition();
+  const guard = useGuardedAction<Awaited<ReturnType<typeof makePriceOffer>>>((res) => {
+    if (!res.ok) {
+      setErrors(res.fieldErrors ?? { amount: [res.error] });
+      return;
+    }
+    toast.success("أرسلنا عرضك للبائع", { description: "بنبلّغك أول ما يرد." });
+    onClose();
+    router.push(`/account/messages/${res.data!.conversationId}`);
+  });
+  const pending = guard.pending;
   const n = Number(amount);
   const diff = n > 0 ? Math.round((1 - n / priceSar) * 100) : 0;
   function submit() {
-    start(async () => {
-      const res = await makePriceOffer({ listingId: listing.id, amount, note: note || undefined });
-      if (!res.ok) {
-        setErrors(res.fieldErrors ?? { amount: [res.error] });
-        return;
-      }
-      toast.success("أرسلنا عرضك للبائع", { description: "بنبلّغك أول ما يرد." });
-      onClose();
-      router.push(`/account/messages/${res.data!.conversationId}`);
-    });
+    guard.exec((ack) => makePriceOffer({ listingId: listing.id, amount, note: note || undefined, ack }));
   }
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
@@ -174,6 +187,7 @@ function OfferDialog({ listing, isOpen, onClose }: ListingActionsProps & { isOpe
           <DialogTitle>قدّم عرض سعر</DialogTitle>
           <DialogDescription>السعر المطلوب <bdi className="font-semibold text-foreground">{formatSAR(listing.price)}</bdi>. العرض صالح 5 أيام، ويمكنك سحبه قبل رد البائع.</DialogDescription>
         </DialogHeader>
+        <GuardNotice codes={guardWarnings} className="mb-3" />
         <Field label="مبلغ عرضك" htmlFor="offer-amount" error={errors.amount} hint={n > 0 && diff > 0 ? `أقل من المطلوب بـ ${diff}%` : undefined}>
           <InputAdorned id="offer-amount" inputMode="numeric" dir="ltr" className="h-12 text-lg font-bold num" value={amount} onChange={(e) => { setAmount(e.target.value.replace(/\D/g, "")); setErrors({}); }} end="ر.س" autoFocus />
         </Field>
@@ -186,25 +200,36 @@ function OfferDialog({ listing, isOpen, onClose }: ListingActionsProps & { isOpe
         <Field label="رسالة مع العرض" optional className="mt-4">
           <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={500} placeholder="مثلًا: أقدر أستلم اليوم بعد العصر" />
         </Field>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>إلغاء</Button>
-          <Button onClick={submit} loading={pending} disabled={!amount}>إرسال العرض</Button>
-        </DialogFooter>
+        {guard.inline ?? (
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>إلغاء</Button>
+            <Button onClick={submit} loading={pending} disabled={!amount}>إرسال العرض</Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
 }
 
-function SwapDialog({ listing, isOpen, onClose, myListings, categories }: ListingActionsProps & { isOpen: boolean; onClose: () => void }) {
+function SwapDialog({ listing, isOpen, onClose, myListings, categories, guardWarnings = [] }: ListingActionsProps & { isOpen: boolean; onClose: () => void }) {
   const router = useRouter();
   const [form, setForm] = useState({ offeredTitle: "", offeredCategoryId: "", offeredCondition: "", offeredDescription: "", offeredListingId: "", cashDirection: "none", cashAmount: "", note: "" });
   const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
-  const [pending, start] = useTransition();
+  const guard = useGuardedAction<Awaited<ReturnType<typeof makeSwapOffer>>>((res) => {
+    if (!res.ok) {
+      setErrors(res.fieldErrors ?? {});
+      toast.error(res.error);
+      return;
+    }
+    toast.success("أرسلنا اقتراح البدل للبائع");
+    onClose();
+    router.push(`/account/messages/${res.data!.conversationId}`);
+  });
+  const pending = guard.pending;
   const set = (k: keyof typeof form, v: string) => { setForm((f) => ({ ...f, [k]: v })); setErrors((e) => ({ ...e, [k]: undefined })); };
 
   function submit() {
-    start(async () => {
-      const res = await makeSwapOffer({
+    guard.exec((ack) => makeSwapOffer({
         listingId: listing.id,
         offeredTitle: form.offeredTitle,
         offeredCategoryId: form.offeredCategoryId ? Number(form.offeredCategoryId) : undefined,
@@ -214,16 +239,8 @@ function SwapDialog({ listing, isOpen, onClose, myListings, categories }: Listin
         cashDirection: form.cashDirection as "none",
         cashAmount: form.cashAmount ? Number(form.cashAmount) : 0,
         note: form.note || undefined,
-      });
-      if (!res.ok) {
-        setErrors(res.fieldErrors ?? {});
-        toast.error(res.error);
-        return;
-      }
-      toast.success("أرسلنا اقتراح البدل للبائع");
-      onClose();
-      router.push(`/account/messages/${res.data!.conversationId}`);
-    });
+        ack,
+      }));
   }
 
   return (
@@ -235,6 +252,7 @@ function SwapDialog({ listing, isOpen, onClose, myListings, categories }: Listin
             {listing.swapDetails ? <>البائع يدوّر على: <span className="font-medium text-foreground">{listing.swapDetails}</span></> : "وضّح وش تعرض وحالته، وفرق السعر إن وجد."}
           </DialogDescription>
         </DialogHeader>
+        <GuardNotice codes={guardWarnings} className="mb-1" />
         <div className="space-y-4">
           {myListings.length > 0 && (
             <Field label="اربطه بأحد إعلاناتك" optional hint="يسهّل على البائع يشوف صور ومواصفات قطعتك.">
@@ -293,10 +311,12 @@ function SwapDialog({ listing, isOpen, onClose, myListings, categories }: Listin
             <Textarea rows={2} value={form.note} onChange={(e) => set("note", e.target.value)} maxLength={500} />
           </Field>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>إلغاء</Button>
-          <Button variant="swap" onClick={submit} loading={pending}>إرسال اقتراح البدل</Button>
-        </DialogFooter>
+        {guard.inline ?? (
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>إلغاء</Button>
+            <Button variant="swap" onClick={submit} loading={pending}>إرسال اقتراح البدل</Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

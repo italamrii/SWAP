@@ -7,7 +7,7 @@ import { assertStaff } from "@/lib/auth/guards";
 import { destroyAllSessions } from "@/lib/auth/session";
 import { VERIFICATION_META, type VerificationLevel } from "@/lib/catalog/verification";
 import { db } from "@/lib/db";
-import { abuseReports, adminAuditLogs, banners, categories, inspections, listings, supportTickets, users, verificationStatuses } from "@/lib/db/schema";
+import { abuseReports, adminAuditLogs, banners, categories, guardFlags, inspections, listings, supportTickets, users, verificationStatuses } from "@/lib/db/schema";
 import { notify } from "../notify";
 import { run, type Result } from "./_utils";
 
@@ -35,6 +35,13 @@ export async function moderateListing(input: { listingId: string; decision: "app
       : decision === "hide" ? { status: "hidden" as const, moderationNote: note ?? "أُخفي من قبل فريق الإشراف" }
       : { status: "active" as const, moderationNote: null };
     await db.update(listings).set(patch).where(eq(listings.id, listingId));
+    if (decision === "approve" || decision === "restore") {
+      // An explicit moderator approval also closes any SWAP Guard holds on the listing.
+      await db
+        .update(guardFlags)
+        .set({ status: "cleared", reviewerId: staff.id, reviewedAt: now, reviewNote: "اعتُمد الإعلان من قائمة الإشراف" })
+        .where(and(eq(guardFlags.subjectType, "listing"), eq(guardFlags.subjectId, listingId), eq(guardFlags.status, "open")));
+    }
     await audit(staff.id, `listing.${decision}`, "listing", listingId, { note, from: l.status });
     const msg = {
       approve: { title: "تم نشر إعلانك 🎉", body: `«${l.title}» ظاهر الآن للمشترين.` },

@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, FolderTree, Flag, Gauge, Megaphone, Package, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, FolderTree, Flag, Gauge, Megaphone, Package, ShieldAlert, ShieldCheck, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -10,13 +10,14 @@ const ITEMS = [
   { href: "/admin/listings", label: "الإعلانات", icon: Package, badge: "pending" as const },
   { href: "/admin/inspections", label: "تقارير الفحص", icon: ShieldCheck, badge: "inspections" as const },
   { href: "/admin/reports", label: "البلاغات", icon: Flag, badge: "reports" as const },
+  { href: "/admin/guard", label: "SWAP Guard", icon: ShieldAlert, badge: "guard" as const },
   { href: "/admin/users", label: "المستخدمون", icon: Users },
   { href: "/admin/categories", label: "الأقسام", icon: FolderTree, adminOnly: true },
   { href: "/admin/content", label: "المحتوى", icon: Megaphone, adminOnly: true },
   { href: "/admin/analytics", label: "التحليلات", icon: BarChart3 },
 ];
 
-export function AdminNav({ counts, isAdmin }: { counts: { pending: number; inspections: number; reports: number }; isAdmin: boolean }) {
+export function AdminNav({ counts, isAdmin }: { counts: { pending: number; inspections: number; reports: number; guard: number }; isAdmin: boolean }) {
   const path = usePathname();
   return (
     <nav aria-label="قائمة الإدارة" className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-2 scrollbar-none lg:mx-0 lg:flex-col lg:px-0">

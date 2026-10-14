@@ -131,3 +131,34 @@ export async function getAnalytics() {
   const cities = await db.select({ city: listings.city, count: sql<number>`count(*)::int` }).from(listings).where(eq(listings.status, "active")).groupBy(listings.city).orderBy(desc(sql`count(*)`)).limit(8);
   return { byCategory, views, levels, signups: [...signups], funnel: funnel!, cities };
 }
+
+/* ───────── SWAP Guard queue ───────── */
+
+export async function getGuardQueue() {
+  const [flags, proofs, openAppeals] = await Promise.all([
+    db.execute<{ id: string; subject_type: string; subject_id: string; severity: string; signals: { code: string; severity: string; ref?: string }[]; holding: boolean; created_at: Date; user_id: string | null; username: string | null; display_name: string | null; listing_title: string | null; listing_slug: string | null }>(sql`
+      select g.id, g.subject_type, g.subject_id, g.severity, g.signals, g.holding, g.created_at, g.user_id, p.username, p.display_name,
+        l.title as listing_title, l.slug as listing_slug
+      from guard_flags g
+      left join profiles p on p.user_id = g.user_id
+      left join listings l on g.subject_type = 'listing' and l.id::text = g.subject_id
+      where g.status = 'open'
+      order by (g.severity = 'high') desc, g.created_at asc
+      limit 100`),
+    db.execute<{ id: string; listing_id: string; code: string; image_url: string; reason: string; submitted_at: Date; title: string; slug: string; username: string }>(sql`
+      select pp.id, pp.listing_id, pp.code, pp.image_url, pp.reason, pp.submitted_at, l.title, l.slug, p.username
+      from possession_proofs pp join listings l on l.id = pp.listing_id join profiles p on p.user_id = pp.user_id
+      where pp.status = 'submitted' order by pp.submitted_at asc limit 100`),
+    db.execute<{ id: string; target_type: string; target_id: string; reason: string; created_at: Date; username: string; flag_signals: { code: string }[] | null; flag_status: string | null }>(sql`
+      select a.id, a.target_type, a.target_id, a.reason, a.created_at, p.username, g.signals as flag_signals, g.status as flag_status
+      from appeals a join profiles p on p.user_id = a.user_id left join guard_flags g on g.id = a.flag_id
+      where a.status = 'open' order by a.created_at asc limit 100`),
+  ]);
+  return { flags: [...flags], proofs: [...proofs], appeals: [...openAppeals] };
+}
+
+export async function getGuardCounts() {
+  const [r] = await db.execute<{ n: number }>(sql`
+    select ((select count(*) from guard_flags where status = 'open') + (select count(*) from possession_proofs where status = 'submitted') + (select count(*) from appeals where status = 'open'))::int as n`);
+  return r?.n ?? 0;
+}

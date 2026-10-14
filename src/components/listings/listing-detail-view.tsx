@@ -14,6 +14,7 @@ import type { ListingDetail } from "@/server/queries/listings";
 import type { ListingCardData } from "@/server/types";
 import { ChevronLeft } from "lucide-react";
 import { ImageGallery } from "./image-gallery";
+import { GuardNotice } from "@/components/guard/guard-ui";
 import { ListingActions, MobileActionBar } from "./listing-actions";
 import { ListingCard, ListingGrid } from "./listing-card";
 import { OwnerPanel } from "./owner-panel";
@@ -28,6 +29,10 @@ export interface ListingDetailViewProps {
   saved: boolean;
   isOwner: boolean;
   signedIn: boolean;
+  /** Signed in with a verified Saudi number (server re-checks every action). */
+  eligible?: boolean;
+  /** SWAP Guard deal warnings shown before contacting the seller. */
+  guardWarnings?: string[];
   myListings: { id: string; title: string }[];
   categories: { id: number; nameAr: string }[];
   /** Visual preview: sample data, transactional actions disabled. */
@@ -35,13 +40,15 @@ export interface ListingDetailViewProps {
 }
 
 /** Shared listing page body for real and visual-preview data. */
-export function ListingDetailView({ data, similar, more, savedIds, saved, isOwner, signedIn, myListings, categories, preview }: ListingDetailViewProps) {
+export function ListingDetailView({ data, similar, more, savedIds, saved, isOwner, signedIn, eligible = false, guardWarnings = [], myListings, categories, preview }: ListingDetailViewProps) {
   const { listing: l, category, subcategory, seller, images, inspection, sellerStats, lastPriceChange } = data;
   const priceDropped = lastPriceChange && lastPriceChange.newPrice < lastPriceChange.oldPrice && daysSince(lastPriceChange.createdAt) < 14;
   const condition = CONDITIONS.find((c) => c.value === l.condition);
   const actionProps = {
     listing: { id: l.id, slug: l.slug, title: l.title, price: l.price, isNegotiable: l.isNegotiable, acceptsSwap: l.acceptsSwap, swapDetails: l.swapDetails },
     signedIn,
+    eligible,
+    guardWarnings,
     saved,
     sellerPhone: seller.showPhone && seller.phone && signedIn ? seller.phone : null,
     myListings,
@@ -200,7 +207,12 @@ export function ListingDetailView({ data, similar, more, savedIds, saved, isOwne
               {isOwner ? (
                 <OwnerPanel listing={{ id: l.id, status: l.status, viewCount: l.viewCount, favoriteCount: l.favoriteCount, verificationLevel: l.verificationLevel }} />
               ) : l.status === "active" ? (
-                preview ? <PreviewActionsNotice /> : <ListingActions {...actionProps} />
+                preview ? <PreviewActionsNotice /> : (
+                  <>
+                    <GuardNotice codes={guardWarnings} className="mb-4" />
+                    <ListingActions {...actionProps} />
+                  </>
+                )
               ) : null}
             </div>
           </div>
