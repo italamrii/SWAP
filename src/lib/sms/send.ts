@@ -2,7 +2,7 @@ import "server-only";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { smsAvailability } from "./config";
-import { twilioRequest, unifonicRequest } from "./requests";
+import { taqnyatRequest, twilioRequest, unifonicRequest } from "./requests";
 
 /** Outside ./storage on purpose: storage is served by /api/files, the outbox must never be. */
 export const OUTBOX_DIR = path.join(process.cwd(), ".sms-outbox");
@@ -23,7 +23,9 @@ export async function sendSms(toE164: string, body: string): Promise<SendResult>
       await writeFile(path.join(OUTBOX_DIR, `${toE164.replace(/\D/g, "")}.json`), JSON.stringify({ to: toE164, body, at: new Date().toISOString() }));
       return { ok: true };
     }
-    const res = a.provider === "unifonic" ? await unifonic(toE164, body) : await twilio(toE164, body);
+    const res = a.provider === "unifonic" ? await unifonic(toE164, body)
+      : a.provider === "taqnyat" ? await taqnyat(toE164, body)
+      : await twilio(toE164, body);
     if (res.ok) return { ok: true };
     console.error(`[sms] ${a.provider} rejected the message: HTTP ${res.status}`);
     return { ok: false, retryable: res.status >= 500 || res.status === 429 };
@@ -49,4 +51,17 @@ async function twilio(to: string, body: string) {
   const r = twilioRequest(process.env, to, body);
   const res = await fetch(r.url, { ...r.init, signal: AbortSignal.timeout(TIMEOUT_MS) });
   return { ok: res.ok, status: res.status };
+}
+
+async function taqnyat(to: string, body: string) {
+  const r = taqnyatRequest(process.env, to, body);
+  const res = await fetch(r.url, { ...r.init, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (res.status !== 201) return { ok: false, status: res.status };
+  const json = (await res.json().catch(() => null)) as { statusCode?: number; accepted?: string | string[]; rejected?: string | string[] } | null;
+  const number = to.replace(/^\+/, "");
+  const accepted = json?.accepted;
+  // A 201 response may still contain rejected recipients: never mark an OTP delivered then.
+  const confirmed = json?.statusCode === 201 &&
+    (typeof accepted === "string" ? accepted.includes(number) : Array.isArray(accepted) && accepted.some(x => String(x) === number));
+  return { ok: confirmed, status: confirmed ? 201 : 422 };
 }

@@ -7,7 +7,6 @@ import { assertEligible, assertStaff, assertUser } from "@/lib/auth/guards";
 import { db } from "@/lib/db";
 import { adminAuditLogs, appeals, guardFlags, listings, mediaFingerprints, possessionProofs } from "@/lib/db/schema";
 import { rateLimit } from "@/lib/rate-limit";
-import { isTrustedImageUrl } from "@/lib/validation/listing";
 import { notify } from "../notify";
 import { newProofCode } from "../services/guard";
 import { run, type Result } from "./_utils";
@@ -23,7 +22,7 @@ async function audit(actorId: string, action: string, targetType: string, target
 export async function submitPossessionProof(input: { proofId: string; imageUrl: string }): Promise<Result> {
   return run(async () => {
     const user = await assertEligible();
-    const p = z.object({ proofId: uuid, imageUrl: z.string().refine(isTrustedImageUrl, "صورة غير صالحة") }).safeParse(input);
+    const p = z.object({ proofId: uuid, imageUrl: z.string().refine((url) => url.startsWith("/api/evidence/proofs/") && /^\/api\/evidence\/proofs\/\d{4}-\d{2}\/[a-z0-9]+\.webp$/.test(url), "صورة إثبات خاصة غير صالحة") }).safeParse(input);
     if (!p.success) return { ok: false, error: "ارفع صورة صالحة" };
     const [proof] = await db.select().from(possessionProofs).where(and(eq(possessionProofs.id, p.data.proofId), eq(possessionProofs.userId, user.id))).limit(1);
     if (!proof || proof.status !== "requested") return { ok: false, error: "لا يوجد طلب إثبات مفتوح" };

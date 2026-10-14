@@ -10,7 +10,7 @@
  */
 import { isVisualPreview } from "@/lib/preview-mode";
 
-export type SmsProviderName = "unifonic" | "twilio" | "outbox";
+export type SmsProviderName = "unifonic" | "twilio" | "taqnyat" | "outbox";
 type Env = Record<string, string | undefined>;
 
 export type SmsAvailability =
@@ -19,6 +19,7 @@ export type SmsAvailability =
 
 const REQUIRED: Record<Exclude<SmsProviderName, "outbox">, string[][]> = {
   unifonic: [["UNIFONIC_APP_SID"], ["UNIFONIC_SENDER_ID"]],
+  taqnyat: [["TAQNYAT_BEARER_TOKEN"], ["TAQNYAT_SENDER_ID"]],
   // Either a sender number or a Messaging Service.
   twilio: [["TWILIO_ACCOUNT_SID"], ["TWILIO_AUTH_TOKEN"], ["TWILIO_FROM", "TWILIO_MESSAGING_SERVICE_SID"]],
 };

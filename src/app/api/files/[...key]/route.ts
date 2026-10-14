@@ -6,6 +6,9 @@ const TYPES: Record<string, string> = { webp: "image/webp", pdf: "application/pd
 export async function GET(_: Request, { params }: { params: Promise<{ key: string[] }> }) {
   const { key } = await params;
   const path = key.join("/");
+  // Old proof paths are intentionally not publicly served. Migrate legacy
+  // uploaded evidence into the private bucket before production rollout.
+  if (path.startsWith("proofs/")) return new Response("Not found", { status: 404 });
   if (!/^[a-z]+\/\d{4}-\d{2}\/[a-z0-9]+\.(webp|pdf)$/.test(path)) return new Response("Not found", { status: 404 });
   const buf = await readLocal(path);
   if (!buf) return new Response("Not found", { status: 404 });
