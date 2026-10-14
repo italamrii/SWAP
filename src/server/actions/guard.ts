@@ -7,7 +7,6 @@ import { assertEligible, assertStaff, assertUser } from "@/lib/auth/guards";
 import { db } from "@/lib/db";
 import { adminAuditLogs, appeals, guardFlags, listings, mediaFingerprints, possessionProofs } from "@/lib/db/schema";
 import { rateLimit } from "@/lib/rate-limit";
-import { isTrustedImageUrl } from "@/lib/validation/listing";
 import { notify } from "../notify";
 import { newProofCode } from "../services/guard";
 import { run, type Result } from "./_utils";
