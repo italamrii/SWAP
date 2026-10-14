@@ -146,9 +146,9 @@ describe("SMS delivery configuration", () => {
   it("builds provider requests as documented (no live call)", () => {
     const u = unifonicRequest({ UNIFONIC_APP_SID: "APP", UNIFONIC_SENDER_ID: "SWAP" }, "+966551234567", "رمز 123456");
     assert.equal(u.url, "https://el.cloud.unifonic.com/rest/SMS/messages");
-    assert.equal(u.init.body.get("Recipient"), "966551234567");
-    assert.equal(u.init.body.get("AppSid"), "APP");
-    assert.equal(u.init.body.get("SenderID"), "SWAP");
+    assert.equal(new URLSearchParams(u.init.body.toString()).get("Recipient"), "966551234567");
+    assert.equal(new URLSearchParams(u.init.body.toString()).get("AppSid"), "APP");
+    assert.equal(new URLSearchParams(u.init.body.toString()).get("SenderID"), "SWAP");
     const tq = taqnyatRequest({ TAQNYAT_BEARER_TOKEN: "token", TAQNYAT_SENDER_ID: "SWAP" }, "+966551234567", "OTP");
     assert.equal(tq.url, "https://api.taqnyat.sa/v1/messages");
     assert.equal(tq.init.headers.Authorization, "Bearer token");
@@ -156,8 +156,8 @@ describe("SMS delivery configuration", () => {
     assert.deepEqual(smsAvailability({ ...secret, SMS_PROVIDER: "taqnyat", TAQNYAT_BEARER_TOKEN: "token", TAQNYAT_SENDER_ID: "SWAP", SMS_DELIVERY_ENABLED: "true" }), { available: true, provider: "taqnyat" });
     const t = twilioRequest({ TWILIO_ACCOUNT_SID: "AC1", TWILIO_AUTH_TOKEN: "tok", TWILIO_FROM: "+15550001111" }, "+966551234567", "x");
     assert.equal(t.url, "https://api.twilio.com/2010-04-01/Accounts/AC1/Messages.json");
-    assert.equal(t.init.body.get("To"), "+966551234567");
-    assert.equal(t.init.body.get("From"), "+15550001111");
+    assert.equal(new URLSearchParams(t.init.body.toString()).get("To"), "+966551234567");
+    assert.equal(new URLSearchParams(t.init.body.toString()).get("From"), "+15550001111");
     assert.equal(t.init.headers.Authorization, `Basic ${Buffer.from("AC1:tok").toString("base64")}`);
   });
 });
