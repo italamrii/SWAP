@@ -33,7 +33,8 @@ async function put(key: string, body: Buffer, contentType: string): Promise<stri
   if (driver === "supabase") {
     const base = process.env.SUPABASE_URL;
     const keySecret = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const bucket = process.env.SUPABASE_BUCKET ?? "swap";
+    const bucket = key.startsWith("proofs/") ? process.env.SUPABASE_PRIVATE_BUCKET : (process.env.SUPABASE_BUCKET ?? "swap");
+    if (!bucket) throw new Error("Private evidence bucket is not configured");
     if (!base || !keySecret) throw new Error("Supabase storage is not configured");
     const res = await fetch(`${base}/storage/v1/object/${bucket}/${key}`, {
       method: "POST",
@@ -41,12 +42,12 @@ async function put(key: string, body: Buffer, contentType: string): Promise<stri
       body: new Uint8Array(body),
     });
     if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-    return `${base}/storage/v1/object/public/${bucket}/${key}`;
+    return key.startsWith("proofs/") ? `/api/evidence/${key}` : `${base}/storage/v1/object/public/${bucket}/${key}`;
   }
   const full = path.join(LOCAL_ROOT, key);
   await mkdir(path.dirname(full), { recursive: true });
   await writeFile(full, body);
-  return `/api/files/${key}`;
+  return key.startsWith("proofs/") ? `/api/evidence/${key}` : `/api/files/${key}`;
 }
 
 /** Local driver only: read a stored file safely (no path traversal). */
@@ -87,4 +88,20 @@ export async function storeDocument(file: File, folder: string): Promise<StoredF
   const url = await put(key, buf, "application/pdf");
   // Documents get an exact-content fingerprint (first 64 bits of SHA-256) so re-used evidence is still caught.
   return { url, key, contentType: "application/pdf", dhash: createHash("sha256").update(buf).digest("hex").slice(0, 16) };
+}
+
+/** Read private possession evidence using a service credential, never a public URL. */
+export async function readEvidence(key: string): Promise<Buffer | null> {
+  if (!/^proofs\/\d{4}-\d{2}\/[a-z0-9]+\.webp$/.test(key)) return null;
+  if (driver !== "supabase") return readLocal(key);
+  const base = process.env.SUPABASE_URL;
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const bucket = process.env.SUPABASE_PRIVATE_BUCKET;
+  if (!base || !secret || !bucket) return null;
+  const res = await fetch(`${base}/storage/v1/object/authenticated/${encodeURIComponent(bucket)}/${key}`, {
+    headers: { Authorization: `Bearer ${secret}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  return Buffer.from(await res.arrayBuffer());
 }
