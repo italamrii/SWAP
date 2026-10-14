@@ -24,8 +24,15 @@ The local development no-database fallback remains in-memory.
 The table is append-only; purge old windows with a scheduled maintenance job (e.g., retain seven days).
 Do not enable the new limiter on production until the migration is applied.
 
+## Confidential proof storage rollout
+- Create a separate private Supabase Storage bucket for possession proofs and set `SUPABASE_PRIVATE_BUCKET`.
+- For new uploads, `proofs/` keys go to this bucket, and clients receive `/api/evidence/proofs/...` instead of a public storage URL.
+- The evidence route requires an authenticated active owner or admin/moderator and returns `Cache-Control: private, no-store`.
+- The legacy public `/api/files/proofs/...` route is blocked. Public legacy Supabase URLs require separate migration and revocation before go-live. Do not claim historical proof privacy is fixed.
+- Review/retention of inspection documents is still pending.
+
 ## Remaining blockers (not complete)
-- Move possession proof and inspection evidence to **private** object storage with authenticated, expiring access URLs. Current public bucket must not be used for sensitive evidence.
+- New possession proofs use a **private** storage bucket and authenticated owner/staff-only route. Set `SUPABASE_PRIVATE_BUCKET` to a genuinely private bucket (no public reads, no public policy). Existing proof objects still need migration/revocation from legacy public storage; inspection evidence remains outstanding. For production, private object storage and DB are required.
 - Add per-device registration, signed attestations, timestamp and nonce replay protection to inspection agent. Keep `INSPECTION_AGENT_ENABLED=false`.
 - Add password-reset email delivery and verify sender.
 - Database provider, backups, restore exercise, secure object storage, uptime and error monitoring.
