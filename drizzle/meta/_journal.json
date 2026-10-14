@@ -15,6 +15,13 @@
       "when": 1791920743323,
       "tag": "0001_support_tickets",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791976058388,
+      "tag": "0002_phone_auth_guard",
+      "breakpoints": true
     }
   ]
 }

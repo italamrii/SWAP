@@ -32,6 +32,11 @@ export const inspectionStatus = pgEnum("inspection_status", ["draft", "submitted
 export const reportTarget = pgEnum("report_target", ["listing", "user", "message"]);
 export const reportReason = pgEnum("report_reason", ["scam", "fake_specs", "stolen", "prohibited", "duplicate", "abuse", "wrong_category", "other"]);
 export const reportStatus = pgEnum("report_status", ["open", "reviewing", "resolved", "dismissed"]);
+export const otpPurpose = pgEnum("otp_purpose", ["login", "change", "claim"]);
+export const guardSeverity = pgEnum("guard_severity", ["info", "warn", "high"]);
+export const guardFlagStatus = pgEnum("guard_flag_status", ["open", "cleared", "confirmed"]);
+export const proofStatus = pgEnum("possession_proof_status", ["requested", "submitted", "approved", "rejected"]);
+export const appealStatus = pgEnum("appeal_status", ["open", "accepted", "rejected"]);
 
 const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
 
@@ -42,8 +47,15 @@ const updatedAt = () => timestamp("updated_at", { withTimezone: true }).notNull(
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
-  email: text("email").notNull(),
-  passwordHash: text("password_hash").notNull(),
+  /** Optional since phone-first sign-up; kept for existing accounts, recovery and notifications. */
+  email: text("email"),
+  /** Null for phone-only accounts (they sign in with an SMS code). */
+  passwordHash: text("password_hash"),
+  /** Verified Saudi mobile number in E.164 (+9665XXXXXXXX). One active account per number. */
+  phone: text("phone"),
+  phoneVerifiedAt: timestamp("phone_verified_at", { withTimezone: true }),
+  /** Set when the number was released to a new owner (number recycling); the account keeps its data. */
+  phoneReleasedAt: timestamp("phone_released_at", { withTimezone: true }),
   role: userRole("role").notNull().default("user"),
   status: userStatus("status").notNull().default("active"),
   /** Trusted sellers publish without the review queue. */
@@ -52,7 +64,28 @@ export const users = pgTable("users", {
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-}, (t) => [uniqueIndex("users_email_uq").on(sql`lower(${t.email})`)]);
+}, (t) => [
+  uniqueIndex("users_email_uq").on(sql`lower(${t.email})`),
+  uniqueIndex("users_phone_uq").on(t.phone).where(sql`${t.phone} is not null`),
+]);
+
+/** One SMS code challenge. Only an HMAC of the code is stored; rows double as the per-number/IP rate-limit ledger. */
+export const phoneOtps = pgTable("phone_otps", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  phone: text("phone").notNull(),
+  purpose: otpPurpose("purpose").notNull(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+  codeHash: text("code_hash").notNull(),
+  attempts: smallint("attempts").notNull().default(0),
+  maxAttempts: smallint("max_attempts").notNull().default(5),
+  /** HMAC of the requesting IP — never the raw address. */
+  ipHash: text("ip_hash"),
+  /** False when the provider refused the message; failed sends still count towards limits. */
+  delivered: boolean("delivered").notNull().default(false),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  createdAt: createdAt(),
+}, (t) => [index("phone_otps_phone_idx").on(t.phone, t.createdAt), index("phone_otps_ip_idx").on(t.ipHash, t.createdAt), index("phone_otps_created_idx").on(t.createdAt)]);
 
 export const sessions = pgTable("sessions", {
   /** sha256 of the cookie token — the raw token is never stored. */
@@ -258,8 +291,10 @@ export const messages = pgTable("messages", {
   kind: messageKind("kind").notNull().default("text"),
   body: text("body").notNull(),
   offerId: uuid("offer_id").references(() => offers.id, { onDelete: "set null" }),
+  /** SWAP Guard signal codes detected in this message (shown to the recipient as warnings). */
+  guardCodes: text("guard_codes").array().notNull().default(sql`'{}'::text[]`),
   createdAt: createdAt(),
-}, (t) => [index("messages_conversation_idx").on(t.conversationId, t.createdAt)]);
+}, (t) => [index("messages_conversation_idx").on(t.conversationId, t.createdAt), index("messages_sender_idx").on(t.senderId, t.createdAt)]);
 
 /* ───────────────────────────── inspection & verification ───────────────────────────── */
 
@@ -354,6 +389,77 @@ export const abuseReports = pgTable("reports_abuse", {
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   createdAt: createdAt(),
 }, (t) => [index("reports_status_idx").on(t.status, t.createdAt), index("reports_target_idx").on(t.targetType, t.targetId)]);
+
+/* ───────────────────────────── SWAP Guard ───────────────────────────── */
+
+export type GuardSignal = { code: string; severity: "info" | "warn" | "high"; ref?: string };
+
+/** Perceptual fingerprint (64-bit dHash, hex) of every uploaded image, for duplicate/evidence-reuse detection. */
+export const mediaFingerprints = pgTable("media_fingerprints", {
+  url: text("url").primaryKey(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(), // listing | inspection | proof | avatar
+  dhash: text("dhash").notNull(),
+  createdAt: createdAt(),
+}, (t) => [index("media_fingerprints_dhash_idx").on(t.dhash), index("media_fingerprints_owner_idx").on(t.ownerId)]);
+
+/** Moderation queue entry raised by SWAP Guard. Stores signal codes and references — not message text. */
+export const guardFlags = pgTable("guard_flags", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  subjectType: text("subject_type").notNull(), // listing | user | message | inspection
+  subjectId: text("subject_id").notNull(),
+  /** The account responsible for the subject (seller / sender). */
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+  severity: guardSeverity("severity").notNull(),
+  signals: jsonb("signals").$type<GuardSignal[]>().notNull().default([]),
+  status: guardFlagStatus("status").notNull().default("open"),
+  /** True when the flag holds the subject (e.g. listing kept in review) until a moderator decides. */
+  holding: boolean("holding").notNull().default(false),
+  reviewerId: uuid("reviewer_id").references(() => users.id, { onDelete: "set null" }),
+  reviewNote: text("review_note"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: createdAt(),
+}, (t) => [index("guard_flags_status_idx").on(t.status, t.createdAt), index("guard_flags_subject_idx").on(t.subjectType, t.subjectId)]);
+
+/** A user chose to continue despite a non-critical warning. Codes only — no content. */
+export const guardAcknowledgements = pgTable("guard_acknowledgements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  subjectType: text("subject_type").notNull(), // listing | conversation | message_draft
+  subjectId: text("subject_id").notNull(),
+  codes: text("codes").array().notNull(),
+  createdAt: createdAt(),
+}, (t) => [index("guard_ack_subject_idx").on(t.userId, t.subjectType, t.subjectId)]);
+
+/** Photo of the item next to a one-time handwritten code, requested when SWAP Guard needs proof the seller has the item. */
+export const possessionProofs = pgTable("possession_proofs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  listingId: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  code: text("code").notNull(),
+  imageUrl: text("image_url"),
+  status: proofStatus("status").notNull().default("requested"),
+  reason: text("reason").notNull(),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  reviewerId: uuid("reviewer_id").references(() => users.id, { onDelete: "set null" }),
+  reviewNote: text("review_note"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: createdAt(),
+}, (t) => [index("possession_proofs_listing_idx").on(t.listingId), index("possession_proofs_status_idx").on(t.status, t.createdAt)]);
+
+export const appeals = pgTable("appeals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  flagId: uuid("flag_id").references(() => guardFlags.id, { onDelete: "cascade" }),
+  targetType: text("target_type").notNull(), // listing | account
+  targetId: text("target_id").notNull(),
+  reason: text("reason").notNull(),
+  status: appealStatus("status").notNull().default("open"),
+  reviewerId: uuid("reviewer_id").references(() => users.id, { onDelete: "set null" }),
+  reviewNote: text("review_note"),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  createdAt: createdAt(),
+}, (t) => [index("appeals_status_idx").on(t.status, t.createdAt), index("appeals_user_idx").on(t.userId)]);
 
 export const notifications = pgTable("notifications", {
   id: uuid("id").primaryKey().defaultRandom(),
