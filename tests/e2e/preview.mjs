@@ -72,6 +72,14 @@ describe("visual preview (no database)", () => {
     await p.locator('[data-testid="preview-auth-disabled"]').waitFor();
     assert.equal(await p.locator('input[name="password"]').count(), 0);
   });
+  it("phone sign-up, sign-in and OTP are unavailable — no shortcuts, no sample codes", async () => {
+    for (const path of ["/sign-up", "/sign-in", "/sign-in/email"]) {
+      const { p } = await open(path);
+      await p.locator('[data-testid="preview-auth-disabled"]').waitFor();
+      assert.equal(await p.locator('input[name="phone"], input[name="code"], input[name="email"]').count(), 0, path);
+      assert.equal(await p.locator('[data-testid="phone-auth"]').count(), 0, path);
+    }
+  });
   it("drawer works and hides account actions", async () => {
     const { p } = await open("/", 390);
     await p.click('[data-testid="drawer-trigger"]');

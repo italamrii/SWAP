@@ -13,7 +13,8 @@ SWAP is a standalone product with its own repository, database and deployment.
 | Listings | 13 category schemas (GPU VRAM and mining history, laptop battery health, monitor panel and Hz…), a 5-step form with live preview, image uploads re-encoded to WebP with EXIF stripped |
 | Trust | 4 verification levels, inspection reports with checklist, temps, SMART and benchmarks, a **per-report verification code photo**, a staleness flag, an audit ledger, and a fixed disclaimer |
 | Deals | Private chat (phone hidden by default), price offers, **structured swap offers** with cash difference in either direction, accept/reject/withdraw, offer expiry |
-| Accounts | Sign-up/in, onboarding, password reset, profile and privacy settings, favorites with **price-drop alerts**, notifications, account deletion |
+| Accounts | **Saudi-mobile sign-up/in with SMS codes** (one account per verified number), legacy email sign-in, onboarding, profile and privacy settings, favorites with **price-drop alerts**, notifications, account deletion |
+| SWAP Guard | Scam-pattern warnings in chats and before deals, image/text duplicate detection, possession proof, moderation queue and appeals — see [docs/08](docs/08-PHONE-AUTH-AND-GUARD.md) |
 | Admin | Moderation queues (listings, inspections, reports, support), user actions (trust, suspend, ban, roles), categories, banners, analytics, audit log |
 | Quality | RTL and dark mode, skeletons, empty states, toasts, Arabic validation messages, JSON-LD, sitemap, OG, security headers and CSP, rate limits |
 
@@ -39,6 +40,8 @@ Demo accounts (**local development and CI only**). The seed refuses non-local da
 | Moderator | mod@swap.example | Mod@12345 |
 | User (has chats, offers, a listing) | demo@swap.example | Demo@12345 |
 | Seller (trusted) | abdullah@swap.example | Seller@12345 |
+
+Seeded sellers have verified (fictional) Saudi numbers; `demo@swap.example` deliberately has none, to exercise the "verify your number first" path. Phone sign-up needs an SMS provider — locally, run with `SMS_PROVIDER=outbox ALLOW_TEST_SMS=true` and read codes from `./.sms-outbox/` (see [docs/08](docs/08-PHONE-AUTH-AND-GUARD.md)). Without a provider, phone sign-up shows as unavailable.
 
 `pnpm db:reset` drops and rebuilds the local database. It refuses to run in production.
 
@@ -72,3 +75,5 @@ docs/                product brief, architecture, design system, research, agent
 4. [Design research → decisions](docs/04-DESIGN-RESEARCH.md)
 5. [Inspection agent integration](docs/05-INSPECTION-AGENT.md)
 6. [Deployment](docs/06-DEPLOYMENT.md)
+7. [Marketplace redesign](docs/07-MARKETPLACE-REDESIGN.md)
+8. [Saudi phone auth & SWAP Guard](docs/08-PHONE-AUTH-AND-GUARD.md)

@@ -5,8 +5,10 @@
  */
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
+import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
+import postgres from "postgres";
 
 const BASE = process.env.BASE ?? "http://localhost:3100";
 const PHOTO = path.resolve("tests/e2e/fixtures/photo.jpg");
@@ -22,15 +24,44 @@ async function newPage(width = 1440) {
 }
 async function login(email, password, width) {
   const p = await newPage(width);
-  await p.goto(`${BASE}/sign-in`);
+  await p.goto(`${BASE}/sign-in/email`);
   await p.fill("input[name=email]", email);
   await p.fill("input[name=password]", password);
   await Promise.all([p.waitForURL(/\/account/), p.click("button[type=submit]")]);
   return p;
 }
 
+/* Phone auth: the server runs with SMS_PROVIDER=outbox + ALLOW_TEST_SMS=true (local/CI only). */
+const OUTBOX = path.resolve(".sms-outbox");
+const sql = postgres(process.env.DATABASE_URL ?? "postgres://swap:swap@127.0.0.1:5432/swap", { max: 1, onnotice: () => {} });
+const randomMobile = () => `05${Math.floor(1 + Math.random() * 9)}${String(Math.floor(Math.random() * 1e7)).padStart(7, "0")}`;
+const e164 = (local) => `+966${local.slice(1)}`;
+async function readCode(local, since) {
+  const file = path.join(OUTBOX, `${e164(local).slice(1)}.json`);
+  for (let i = 0; i < 50; i++) {
+    const st = await stat(file).catch(() => null);
+    if (st && st.mtimeMs >= since) return JSON.parse(await readFile(file, "utf8")).body.match(/\b(\d{6})\b/)[1];
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  throw new Error(`no SMS for ${local}`);
+}
+/** Simulate the resend cooldown elapsing (the server enforces 60s+ between codes to one number). */
+const elapseCooldown = (local) => sql`update phone_otps set created_at = created_at - interval '15 minutes' where phone = ${e164(local)}`;
+/** Enter a number, receive the code from the outbox, type it. Returns the page (now navigating). */
+async function phoneSignIn(p, local, { path: route = "/sign-in" } = {}) {
+  await p.goto(`${BASE}${route}`);
+  const since = Date.now() - 50;
+  await p.fill("input[name=phone]", local);
+  await p.click('button:has-text("أرسل رمز التحقق")');
+  await p.locator('[data-step="code"]').waitFor();
+  const code = await readCode(local, since);
+  await p.fill("input[name=code]", code);
+  return code;
+}
+
 before(async () => { browser = await chromium.launch(launchOpts); });
 after(async () => {
+  await sql.end();
   await browser.close();
   assert.deepEqual(pageErrors, [], "no uncaught page errors");
 });
@@ -139,24 +170,67 @@ describe("header & navigation drawer", () => {
 });
 
 describe("auth & permissions", () => {
-  it("sign-up validates, creates the account and onboards", async () => {
+  it("phone sign-up rejects invalid and non-Saudi numbers", async () => {
     const p = await newPage();
     await p.goto(`${BASE}/sign-up`);
-    await p.click("button[type=submit]");
-    await p.getByText("صيغة البريد الإلكتروني غير صحيحة").waitFor();
-    const email = `e2e+${Date.now()}@example.com`;
-    await p.fill("input[name=displayName]", "مختبر سواب");
-    await p.fill("input[name=email]", email);
-    await p.fill("input[name=password]", "Testing123");
-    await p.click('button[role=checkbox]');
-    await Promise.all([p.waitForURL(/\/onboarding/), p.click("button[type=submit]")]);
-    await p.fill("input[name=username]", `e2e_${Date.now() % 100000}`);
+    for (const [input, msg] of [["12345", "رقم الجوال غير صحيح"], ["+971501234567", "لأرقام الجوال السعودية فقط"], ["0112345678", "رقم هاتف أرضي"]]) {
+      await p.fill("input[name=phone]", input);
+      await p.click('button:has-text("أرسل رمز التحقق")');
+      await p.getByText(msg).waitFor();
+      assert.equal(await p.locator('[data-step="phone"]').count(), 1, `${input} must not reach the code step`);
+    }
+  });
+  it("phone sign-up: SMS code → profile → account features", async () => {
+    const p = await newPage(390);
+    const local = randomMobile();
+    const code = await phoneSignIn(p, local, { path: "/sign-up" });
+    await p.waitForURL(/\/onboarding/);
+    assert.ok(!(await p.content()).includes(code), "the code is never rendered back");
+    await p.fill("input[name=username]", `ph_${Date.now() % 100000}`);
+    await p.fill("input[name=displayName]", "مختبر الجوال");
     await p.selectOption("select[name=city]", "jeddah");
-    await Promise.all([p.waitForURL(/\/account\?welcome=1/), p.click("button[type=submit]")]);
+    await Promise.all([p.waitForURL(/\/account/), p.click("button[type=submit]")]);
+    await p.goto(`${BASE}/account/listings/new`);
+    assert.equal(new URL(p.url()).pathname, "/account/listings/new", "a verified number unlocks listing");
+    await p.goto(`${BASE}/account/settings`);
+    assert.equal(await p.getByTestId("verified-phone").innerText(), `05• ••• ${local.slice(-4)}`);
+    process.env.E2E_PHONE_USER = local;
+  });
+  it("the same number signs back in to the same account (one account per number)", async () => {
+    const local = process.env.E2E_PHONE_USER;
+    const p = await newPage();
+    await elapseCooldown(local);
+    await phoneSignIn(p, local);
+    await p.waitForURL((u) => u.pathname === "/account");
+    const [{ n }] = await sql`select count(*)::int as n from users where phone = ${e164(local)}`;
+    assert.equal(n, 1);
+  });
+  it("OTP abuse: resend cooldown, 5 wrong guesses exhaust the code, codes are single-use", async () => {
+    const p = await newPage();
+    const local = randomMobile();
+    await p.goto(`${BASE}/sign-in`);
+    const since = Date.now() - 50;
+    await p.fill("input[name=phone]", local);
+    await p.click('button:has-text("أرسل رمز التحقق")');
+    await p.locator('[data-step="code"]').waitFor();
+    assert.equal(await p.getByTestId("resend-code").isDisabled(), true, "resend waits for the cooldown");
+    const code = await readCode(local, since);
+    const wrong = code === "000000" ? "111111" : "000000";
+    for (let i = 4; i >= 1; i--) {
+      await p.fill("input[name=code]", wrong);
+      await p.getByText(`تبقّى ${i}`).waitFor();
+    }
+    await p.fill("input[name=code]", wrong);
+    await p.getByText("استنفدت محاولات هذا الرمز").waitFor();
+    await p.fill("input[name=code]", code);
+    await p.getByText(/استنفدت محاولات هذا الرمز|انتهت صلاحية الرمز/).waitFor();
+    assert.equal(new URL(p.url()).pathname, "/sign-in", "the right code no longer works after exhaustion");
+    const [row] = await sql`select code_hash from phone_otps where phone = ${e164(local)} order by created_at desc limit 1`;
+    assert.ok(!row.code_hash.includes(code), "only an HMAC of the code is stored");
   });
   it("wrong password is rejected; protected pages redirect", async () => {
     const p = await newPage();
-    await p.goto(`${BASE}/sign-in`);
+    await p.goto(`${BASE}/sign-in/email`);
     await p.fill("input[name=email]", "demo@swap.example");
     await p.fill("input[name=password]", "wrong-pass1");
     await p.click("button[type=submit]");
@@ -176,6 +250,72 @@ describe("auth & permissions", () => {
   it("uploads require authentication", async () => {
     const r = await fetch(`${BASE}/api/uploads`, { method: "POST", body: new FormData() });
     assert.equal(r.status, 401);
+  });
+});
+
+describe("account eligibility & international browsing", () => {
+  it("visitors from anywhere can browse, search, open listings, sellers and safety pages", async () => {
+    const headers = { "x-forwarded-for": "8.8.8.8", "accept-language": "en-US" };
+    for (const path of ["/", "/browse", "/browse/gpus?q=RTX", "/seller/abdullah_pc", "/safety", "/verification", "/how-it-works"]) {
+      const r = await fetch(`${BASE}${path}`, { headers, redirect: "manual" });
+      assert.equal(r.status, 200, path);
+    }
+    const p = await newPage();
+    await p.setExtraHTTPHeaders(headers);
+    await p.goto(`${BASE}/browse`);
+    await Promise.all([p.waitForURL(/\/listing\//), p.click("article a >> nth=0")]);
+  });
+  it("an email account without a verified number cannot list, message or upload — enforced on the server", async () => {
+    const p = await login("demo@swap.example", "Demo@12345");
+    await p.getByTestId("verify-phone-banner").waitFor();
+    await p.goto(`${BASE}/account/listings/new`);
+    await p.waitForURL(/\/account\/verify-phone\?next=%2Faccount%2Flistings%2Fnew/);
+    assert.equal(await p.locator("#title").count(), 0, "the listing form is never rendered");
+    await p.goto(`${BASE}/browse?q=Odyssey`);
+    await p.click("article a >> nth=0");
+    await p.click('aside button:has-text("راسل البائع")');
+    await p.waitForURL(/\/account\/verify-phone\?next=%2Flisting%2F/);
+    const cookie = (await p.context().cookies()).map((c) => `${c.name}=${c.value}`).join("; ");
+    const fd = new FormData();
+    fd.set("kind", "listing");
+    fd.set("file", new Blob([await readFile(PHOTO)], { type: "image/jpeg" }), "x.jpg");
+    const r = await fetch(`${BASE}/api/uploads`, { method: "POST", body: fd, headers: { cookie } });
+    assert.equal(r.status, 403);
+    assert.equal((await r.json()).phoneRequired, true);
+  });
+  it("a number already used by another active account cannot be claimed; verifying a free number unlocks the account", async () => {
+    const p = await login("demo@swap.example", "Demo@12345");
+    await p.goto(`${BASE}/account/verify-phone`);
+    await p.fill("input[name=phone]", "0500000103"); // a seeded seller's number
+    await p.click('button:has-text("أرسل رمز التحقق")');
+    await p.getByText("هذا الرقم مرتبط بحساب آخر").waitFor();
+    const local = randomMobile();
+    const since = Date.now() - 50;
+    await p.fill("input[name=phone]", local);
+    await p.click('button:has-text("أرسل رمز التحقق")');
+    await p.locator('[data-step="code"]').waitFor();
+    await p.fill("input[name=code]", await readCode(local, since));
+    await p.waitForURL(/\/account\/settings\?phone=verified/);
+    await p.goto(`${BASE}/account/listings/new`);
+    assert.equal(new URL(p.url()).pathname, "/account/listings/new");
+  });
+  it("a recycled number (dormant account) opens a fresh account, never the old one", async () => {
+    const local = randomMobile();
+    const a = await newPage();
+    await phoneSignIn(a, local);
+    await a.waitForURL(/\/onboarding/);
+    const [old] = await sql`update users set last_seen_at = now() - interval '200 days', created_at = now() - interval '400 days' where phone = ${e164(local)} returning id`;
+    await elapseCooldown(local);
+    const b = await newPage();
+    await phoneSignIn(b, local);
+    await b.getByTestId("recycled-number").waitFor();
+    await Promise.all([b.waitForURL(/\/onboarding/), b.click('button:has-text("أنشئ حسابًا جديدًا")')]);
+    const rows = await sql`select id, phone, phone_released_at from users where id = ${old.id} or phone = ${e164(local)}`;
+    const oldRow = rows.find((r) => r.id === old.id);
+    const newRow = rows.find((r) => r.id !== old.id);
+    assert.equal(oldRow.phone, null);
+    assert.ok(oldRow.phone_released_at);
+    assert.equal(newRow.phone, e164(local));
   });
 });
 
@@ -219,6 +359,83 @@ describe("selling, offers and swaps", () => {
     await p.goto(`${BASE}/browse?q=Legion Pro 5`);
     await p.click("article a >> nth=0");
     assert.equal(await p.locator('aside button:has-text("اقترح بدل")').count(), 0);
+  });
+});
+
+describe("SWAP Guard", () => {
+  it("a deposit request with a short link warns the sender; the recipient must acknowledge before replying", async () => {
+    const buyer = await login("sarah@swap.example", "Seller@12345");
+    await buyer.goto(`${BASE}/browse?q=Legion Pro 5`);
+    await buyer.click("article a >> nth=0");
+    await buyer.click('aside button:has-text("راسل البائع")');
+    await buyer.fill('[role=dialog] textarea', "حوّل عربون 200 ريال قبل المعاينة على هذا الرابط bit.ly/pay-now");
+    await buyer.click('[role=dialog] button:has-text("إرسال")');
+    await buyer.getByTestId("guard-dialog").waitFor();
+    await buyer.getByText("طلب دفع قبل المعاينة").first().waitFor();
+    await Promise.all([buyer.waitForURL(/\/account\/messages\//), buyer.click('[data-testid=guard-dialog] button:has-text("فهمت، متابعة")')]);
+    const thread = buyer.url();
+
+    const seller = await login("abdullah@swap.example", "Seller@12345");
+    await seller.goto(thread);
+    await seller.getByTestId("message-guard").first().waitFor();
+    assert.equal(await seller.locator('textarea[aria-label="نص الرسالة"]').count(), 0, "composer waits for acknowledgement");
+    await seller.getByTestId("guard-ack").click();
+    await seller.locator('textarea[aria-label="نص الرسالة"]').waitFor();
+    const [flag] = await sql`select signals from guard_flags where subject_type = 'user' and status = 'open' and user_id = (select user_id from profiles where username = 'sarah_z')`;
+    assert.ok(flag?.signals.some((x) => x.code === "suspicious_link"), "phishing-shaped link is queued for moderation");
+    assert.equal(JSON.stringify(flag.signals).includes("bit.ly"), false, "the audit trail keeps codes, not message text");
+  });
+  it("a swap offer whose note links off-site asks for acknowledgement, then sends", async () => {
+    const p = await login("nawaf@swap.example", "Seller@12345");
+    await p.goto(`${BASE}/browse?q=ASUS Dual`);
+    await p.click("article a >> nth=0");
+    await p.click('aside button:has-text("اقترح بدل")');
+    const d = p.locator("[role=dialog]");
+    await d.locator('input[placeholder^="مثلًا: RX"]').fill("RX 7900 GRE Sapphire Pulse");
+    await d.locator("select").filter({ hasText: "اختر الحالة" }).selectOption("excellent");
+    await d.locator("textarea").last().fill("الصور والتفاصيل هنا https://example.com/my-gpu");
+    await d.locator('button:has-text("إرسال اقتراح البدل")').click();
+    await p.getByTestId("guard-dialog").waitFor();
+    await p.getByText("رابط خارج سواب").first().waitFor();
+    await Promise.all([p.waitForURL(/\/account\/messages\//), p.click('[data-testid=guard-dialog] button:has-text("فهمت، متابعة")')]);
+  });
+  it("a listing that reuses another seller's photo is held; possession proof + moderator release it", async () => {
+    const s = await login("sarah@swap.example", "Seller@12345");
+    await s.goto(`${BASE}/account/listings/new`);
+    await s.click('button[role=radio]:has-text("لابتوبات")');
+    await s.setInputFiles("input[type=file]", PHOTO);
+    await s.getByText("الغلاف").waitFor({ timeout: 20000 });
+    await s.selectOption("#spec-brand", "Lenovo");
+    await s.fill("#spec-model", "Legion Slim 7");
+    await s.fill("#spec-cpu", "i7-13700H");
+    await s.selectOption("#spec-ramGb", "16");
+    await s.selectOption("#spec-storageGb", "1024");
+    await s.fill("#title", "Lenovo Legion Slim 7 نظيف جدًا");
+    await s.click('button[role=radio]:has-text("ممتاز")');
+    await s.fill("#description", "لابتوب نظيف استخدام خفيف مع الشاحن الأصلي، يشتغل بدون أي مشاكل.");
+    await s.fill("#price", "4100");
+    await Promise.all([s.waitForURL(/created=guard/), s.click('button:has-text("نشر الإعلان")')]);
+    await s.getByTestId("guard-review-link").first().click();
+    await s.getByTestId("guard-case").waitFor();
+    await s.getByText("صورة مستخدمة في إعلان لحساب آخر").waitFor();
+    const code = await s.getByTestId("proof-code").innerText();
+    assert.match(code, /^SG-[A-Z0-9]{5}$/);
+    await s.setInputFiles('input[aria-label="صورة إثبات الحيازة"]', PHOTO);
+    await s.locator('img[alt="معاينة صورة الإثبات"]').waitFor({ timeout: 20000 });
+    await s.click('button:has-text("أرسل للمراجعة")');
+    await s.getByText("أرسلنا الصورة لفريق المراجعة").waitFor();
+
+    const v = await newPage();
+    await v.goto(`${BASE}/browse?q=Legion Slim 7`);
+    assert.equal(await v.locator("article").count(), 0, "held listings are not public");
+
+    const mod = await login("mod@swap.example", "Mod@12345");
+    await mod.goto(`${BASE}/admin/guard?tab=proofs`);
+    await mod.getByText(code).waitFor();
+    await mod.getByTestId("proof-approve").first().click();
+    await mod.getByText("قُبلت الصورة").waitFor();
+    await v.goto(`${BASE}/browse?q=Legion Slim 7`);
+    await v.locator("article").first().waitFor();
   });
 });
 

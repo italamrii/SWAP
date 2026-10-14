@@ -30,6 +30,9 @@ The web image is a Next.js `standalone` build running as a non-root user.
 service, builds, and runs the Playwright E2E suite against the production server.
 
 ## Go-live checklist
+- [ ] Run `pnpm db:migrate:prod` (additive migration `0002_phone_auth_guard`; existing users and data are preserved).
+- [ ] SMS: `OTP_SECRET`, `SMS_PROVIDER` + credentials and a CST-registered sender ID; set `SMS_DELIVERY_ENABLED=true` only after the SMS budget is approved (see docs/08). Until then phone sign-up shows as unavailable.
+- [ ] Never set `ALLOW_TEST_SMS` or `ALLOW_DEMO_ACCOUNTS` on a public deployment.
 - [ ] Backups and a tested restore for Postgres; point-in-time recovery enabled.
 - [ ] Email provider wired in `requestPasswordReset` (Resend or SES). In dev the link is only logged.
 - [ ] Swap the in-memory rate limiter (`src/lib/rate-limit.ts`) for Redis or Upstash when running more than one instance.

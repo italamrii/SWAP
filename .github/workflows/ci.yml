@@ -51,6 +51,11 @@ jobs:
         env:
           # Throwaway CI database only — demo logins stay blocked in real production.
           ALLOW_DEMO_ACCOUNTS: "true"
+          # SMS codes go to a local file the tests read. The outbox refuses to run on Vercel or any
+          # non-localhost APP_URL, so this can never become a public shortcut. No real SMS is sent.
+          SMS_PROVIDER: outbox
+          ALLOW_TEST_SMS: "true"
+          OTP_SECRET: ci-only-otp-hmac-key-not-a-real-secret-0001
         run: |
           pnpm start > server.log 2>&1 &
           npx wait-on -t 60000 http://localhost:3100
