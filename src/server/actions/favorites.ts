@@ -3,13 +3,15 @@
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { PHONE_REQUIRED_MESSAGE } from "@/lib/auth/guards";
 import { getCurrentUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { favorites, listings } from "@/lib/db/schema";
 
-export async function toggleFavorite(listingId: string): Promise<{ ok: boolean; saved?: boolean; error?: string; auth?: boolean }> {
+export async function toggleFavorite(listingId: string): Promise<{ ok: boolean; saved?: boolean; error?: string; auth?: boolean; phoneRequired?: boolean }> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, auth: true, error: "سجّل دخولك لحفظ الإعلانات" };
+  if (!user.eligible) return { ok: false, phoneRequired: user.status === "active", error: user.status === "active" ? PHONE_REQUIRED_MESSAGE : "حسابك موقوف مؤقتًا" };
   if (!z.string().uuid().safeParse(listingId).success) return { ok: false, error: "إعلان غير صالح" };
 
   const [listing] = await db.select({ price: listings.price, sellerId: listings.sellerId }).from(listings).where(eq(listings.id, listingId)).limit(1);
@@ -34,6 +36,7 @@ export async function toggleFavorite(listingId: string): Promise<{ ok: boolean; 
 export async function setPriceAlert(listingId: string, enabled: boolean) {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "يلزم تسجيل الدخول" };
+  if (!user.eligible) return { ok: false, error: PHONE_REQUIRED_MESSAGE };
   await db
     .update(favorites)
     .set({ notifyPriceDrop: enabled })

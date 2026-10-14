@@ -48,6 +48,7 @@ async function main() {
     const [row] = await db.insert(s.users).values({
       email: u.email, passwordHash: await hashPassword(u.password), role: u.role ?? "user", trusted: u.trusted ?? false,
       emailVerifiedAt: daysAgo(u.joinedDaysAgo), createdAt: daysAgo(u.joinedDaysAgo), lastSeenAt: daysAgo(0, Math.random() * 20),
+      phone: u.verifiedPhone ?? null, phoneVerifiedAt: u.verifiedPhone ? daysAgo(u.joinedDaysAgo) : null,
     }).returning();
     await db.insert(s.profiles).values({
       userId: row.id, username: u.username, displayName: u.displayName, city: u.city, bio: u.bio,

@@ -6,7 +6,7 @@ import { InspectionForm } from "@/components/inspection/inspection-form";
 import { ListingImage } from "@/components/listings/listing-image";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert } from "@/components/ui/alert";
-import { requireUser } from "@/lib/auth/guards";
+import { requireEligible } from "@/lib/auth/guards";
 import { db } from "@/lib/db";
 import { categories, listings } from "@/lib/db/schema";
 import { startInspection } from "@/server/actions/inspections";
@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "تقرير الفحص" };
 
 export default async function InspectionEditorPage({ params }: { params: Promise<{ listingId: string }> }) {
   const { listingId } = await params;
-  const user = await requireUser(`/account/verification/${listingId}`);
+  const user = await requireEligible(`/account/verification/${listingId}`);
   if (!/^[0-9a-f-]{36}$/.test(listingId)) notFound();
   const [l] = await db
     .select({ id: listings.id, title: listings.title, slug: listings.slug, cover: listings.coverImageUrl, specs: listings.specs, schemaKey: categories.schemaKey })

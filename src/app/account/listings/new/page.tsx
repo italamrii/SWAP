@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { ListingForm } from "@/components/listings/form/listing-form";
 import { PageHeader } from "@/components/shared/page-header";
-import { requireUser } from "@/lib/auth/guards";
+import { requireEligible } from "@/lib/auth/guards";
 import { getCategoryTree } from "@/server/queries/categories";
 
 export const metadata: Metadata = { title: "إعلان جديد" };
 
 export default async function NewListingPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
-  const [user, tree, sp] = await Promise.all([requireUser("/account/listings/new"), getCategoryTree(), searchParams]);
+  const [user, tree, sp] = await Promise.all([requireEligible("/account/listings/new"), getCategoryTree(), searchParams]);
   return (
     <div className="space-y-6">
       <PageHeader title="أضف إعلانًا جديدًا" description="خمس خطوات بسيطة. كل ما كانت التفاصيل أوضح، كان البيع أسرع." />

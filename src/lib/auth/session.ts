@@ -1,9 +1,10 @@
 import "server-only";
-import { and, eq, gt, lt } from "drizzle-orm";
+import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { cache } from "react";
 import { db } from "@/lib/db";
 import { profiles, sessions, users } from "@/lib/db/schema";
+import { hasVerifiedSaudiPhone, isEligible } from "./eligibility";
 import { hashToken, newToken } from "./tokens";
 
 export const SESSION_COOKIE = "swap_session";
@@ -38,7 +39,14 @@ export async function destroyAllSessions(userId: string) {
 
 export type CurrentUser = {
   id: string;
-  email: string;
+  email: string | null;
+  /** Verified E.164 number, or null. Never rendered in full outside the owner's settings. */
+  phone: string | null;
+  phoneVerified: boolean;
+  /** Verified Saudi number + active status: may list, message, make offers, save favorites. */
+  eligible: boolean;
+  hasPassword: boolean;
+  sessionCreatedAt: Date;
   role: "user" | "moderator" | "admin";
   status: "active" | "suspended" | "banned";
   trusted: boolean;
@@ -59,6 +67,10 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     .select({
       id: users.id,
       email: users.email,
+      phone: users.phone,
+      phoneVerifiedAt: users.phoneVerifiedAt,
+      hasPassword: sql<boolean>`${users.passwordHash} is not null`,
+      sessionCreatedAt: sessions.createdAt,
       role: users.role,
       status: users.status,
       trusted: users.trusted,
@@ -79,6 +91,11 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   return {
     id: row.id,
     email: row.email,
+    phone: row.phone,
+    phoneVerified: hasVerifiedSaudiPhone(row),
+    eligible: isEligible(row),
+    hasPassword: row.hasPassword,
+    sessionCreatedAt: row.sessionCreatedAt,
     role: row.role,
     status: row.status,
     trusted: row.trusted,

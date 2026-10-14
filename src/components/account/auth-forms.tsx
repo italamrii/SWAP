@@ -5,11 +5,10 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/field";
 import { Input, NativeSelect, Textarea } from "@/components/ui/input";
 import { CITIES } from "@/lib/catalog/cities";
-import { completeOnboarding, requestPasswordReset, resetPassword, signIn, signUp, type FormState } from "@/server/actions/auth";
+import { completeOnboarding, requestPasswordReset, resetPassword, signIn, type FormState } from "@/server/actions/auth";
 import { PasswordInput } from "./password-input";
 
 const initial: FormState = {};
@@ -30,31 +29,6 @@ export function SignInForm({ next }: { next?: string }) {
         <Link href="/forgot-password" className="text-[13px] font-medium text-primary-ink hover:underline">نسيت كلمة المرور؟</Link>
       </div>
       <Button type="submit" size="lg" className="w-full" loading={pending}>تسجيل الدخول</Button>
-    </form>
-  );
-}
-
-export function SignUpForm() {
-  const [state, action, pending] = useActionState(signUp, initial);
-  return (
-    <form action={action} className="space-y-4" noValidate>
-      {state.error && <Alert variant="danger">{state.error}</Alert>}
-      <Field label="الاسم" htmlFor="displayName" error={state.fieldErrors?.displayName} hint="يظهر للمشترين والبائعين.">
-        <Input id="displayName" name="displayName" autoComplete="name" defaultValue={state.values?.displayName} aria-invalid={!!state.fieldErrors?.displayName} required autoFocus />
-      </Field>
-      <Field label="البريد الإلكتروني" htmlFor="email" error={state.fieldErrors?.email}>
-        <Input id="email" name="email" type="email" dir="ltr" autoComplete="email" defaultValue={state.values?.email} aria-invalid={!!state.fieldErrors?.email} className="text-start" required />
-      </Field>
-      <Field label="كلمة المرور" htmlFor="password" error={state.fieldErrors?.password} hint="8 أحرف على الأقل، تتضمن حرفًا ورقمًا.">
-        <PasswordInput id="password" name="password" autoComplete="new-password" aria-invalid={!!state.fieldErrors?.password} required />
-      </Field>
-      <Field error={state.fieldErrors?.terms}>
-        <label className="flex items-start gap-2.5 text-[13px] leading-relaxed text-muted-foreground">
-          <Checkbox name="terms" value="on" className="mt-0.5" />
-          <span>أوافق على <Link href="/terms" className="font-medium text-primary-ink underline-offset-2 hover:underline" target="_blank">شروط الاستخدام</Link> و<Link href="/privacy" className="font-medium text-primary-ink underline-offset-2 hover:underline" target="_blank">سياسة الخصوصية</Link>.</span>
-        </label>
-      </Field>
-      <Button type="submit" size="lg" className="w-full" loading={pending}>إنشاء الحساب</Button>
     </form>
   );
 }

@@ -38,20 +38,17 @@ export async function updateProfile(input: z.input<typeof profileSchema>): Promi
   });
 }
 
-const privacySchema = z.object({
-  phone: z.string().trim().regex(/^(05\d{8})?$/, "اكتب الرقم بصيغة 05XXXXXXXX").optional(),
-  showPhone: z.boolean(),
-  notifyEmail: z.boolean(),
-});
+const privacySchema = z.object({ showPhone: z.boolean(), notifyEmail: z.boolean() });
 
+/** "Show my number" always shows the verified number — a free-text contact number could be anyone's. */
 export async function updatePrivacy(input: z.input<typeof privacySchema>): Promise<Result> {
   return run(async () => {
     const user = await assertUser({ allowSuspended: true });
     const parsed = privacySchema.safeParse(input);
     if (!parsed.success) return zodFail(parsed.error);
     const d = parsed.data;
-    if (d.showPhone && !d.phone) return { ok: false, error: "أضف رقم الجوال أولًا", fieldErrors: { phone: ["أضف رقم الجوال لإظهاره"] } };
-    await db.update(profiles).set({ phone: d.phone || null, showPhone: d.showPhone, notifyEmail: d.notifyEmail }).where(eq(profiles.userId, user.id));
+    if (d.showPhone && !user.phoneVerified) return { ok: false, error: "وثّق رقم جوالك أولًا لتتمكن من إظهاره" };
+    await db.update(profiles).set({ showPhone: d.showPhone, notifyEmail: d.notifyEmail }).where(eq(profiles.userId, user.id));
     return { ok: true, message: "حفظنا إعدادات الخصوصية" };
   });
 }
@@ -62,6 +59,7 @@ export async function changePassword(input: { current: string; next: string }): 
     const parsed = z.object({ current: z.string().min(1, "أدخل كلمة المرور الحالية"), next: passwordSchema }).safeParse(input);
     if (!parsed.success) return zodFail(parsed.error);
     const [u] = await db.select({ hash: users.passwordHash }).from(users).where(eq(users.id, user.id)).limit(1);
+    if (!u.hash) return { ok: false, error: "حسابك يسجّل الدخول برمز SMS ولا يستخدم كلمة مرور." };
     if (!(await verifyPassword(parsed.data.current, u.hash))) return { ok: false, error: "كلمة المرور الحالية غير صحيحة", fieldErrors: { current: ["كلمة المرور الحالية غير صحيحة"] } };
     await db.update(users).set({ passwordHash: await hashPassword(parsed.data.next) }).where(eq(users.id, user.id));
     await signOutOtherSessionsFor(user.id);
@@ -83,13 +81,22 @@ export async function signOutOtherSessions(): Promise<Result> {
   });
 }
 
-export async function deleteAccount(input: { confirmEmail: string; password: string }): Promise<Result> {
+const RECENT_AUTH_MINUTES = 15;
+
+/** Email accounts confirm with email + password; phone-only accounts with a sign-in from the last 15 minutes. */
+export async function deleteAccount(input: { confirmEmail?: string; password?: string; confirmText?: string }): Promise<Result> {
   const res = await run(async () => {
     const user = await assertUser({ allowSuspended: true });
-    if (input.confirmEmail.trim().toLowerCase() !== user.email.toLowerCase()) return { ok: false, error: "البريد غير مطابق" };
     const [u] = await db.select({ hash: users.passwordHash, role: users.role }).from(users).where(eq(users.id, user.id)).limit(1);
     if (u.role === "admin") return { ok: false, error: "لا يمكن حذف حساب مدير من هنا" };
-    if (!(await verifyPassword(input.password, u.hash))) return { ok: false, error: "كلمة المرور غير صحيحة" };
+    if (u.hash) {
+      if ((input.confirmEmail ?? "").trim().toLowerCase() !== (user.email ?? "").toLowerCase()) return { ok: false, error: "البريد غير مطابق" };
+      if (!(await verifyPassword(input.password ?? "", u.hash))) return { ok: false, error: "كلمة المرور غير صحيحة" };
+    } else {
+      if ((input.confirmText ?? "").trim() !== "حذف حسابي") return { ok: false, error: "اكتب «حذف حسابي» للتأكيد" };
+      if (Date.now() - user.sessionCreatedAt.getTime() > RECENT_AUTH_MINUTES * 60_000)
+        return { ok: false, error: "لحماية حسابك، سجّل الخروج ثم ادخل برمز جديد، وبعدها احذف الحساب خلال 15 دقيقة." };
+    }
     await destroySession();
     await db.delete(users).where(eq(users.id, user.id));
     return { ok: true };

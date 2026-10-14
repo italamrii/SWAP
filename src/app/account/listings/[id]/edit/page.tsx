@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ListingForm } from "@/components/listings/form/listing-form";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert } from "@/components/ui/alert";
-import { requireUser } from "@/lib/auth/guards";
+import { requireEligible } from "@/lib/auth/guards";
 import { db } from "@/lib/db";
 import { listingImages, listings } from "@/lib/db/schema";
 import { getCategoryTree } from "@/server/queries/categories";
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "تعديل الإعلان" };
 
 export default async function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await requireUser(`/account/listings/${id}/edit`);
+  const user = await requireEligible(`/account/listings/${id}/edit`);
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const [l] = await db.select().from(listings).where(and(eq(listings.id, id), eq(listings.sellerId, user.id))).limit(1);
   if (!l) notFound();

@@ -34,6 +34,8 @@ export function FavoriteButton({
             description: "احفظ الإعلانات ونبّهك إذا نزل السعر.",
             action: { label: "تسجيل الدخول", onClick: () => router.push(`/sign-in?next=${encodeURIComponent(location.pathname)}`) },
           });
+        } else if (res.phoneRequired) {
+          toast(res.error, { action: { label: "وثّق رقمك", onClick: () => router.push(`/account/verify-phone?next=${encodeURIComponent(location.pathname)}`) } });
         } else toast.error(res.error);
         return;
       }

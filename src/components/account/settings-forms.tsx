@@ -89,9 +89,8 @@ export function ProfileForm({ initial }: { initial: { displayName: string; usern
   );
 }
 
-export function PrivacyForm({ initial }: { initial: { phone: string; showPhone: boolean; notifyEmail: boolean } }) {
+export function PrivacyForm({ initial, maskedPhone }: { initial: { showPhone: boolean; notifyEmail: boolean }; maskedPhone: string | null }) {
   const [v, setV] = useState(initial);
-  const [errors, setErrors] = useState<Errors>({});
   const [pending, start] = useTransition();
   return (
     <Card title="التواصل والخصوصية" description="رقمك مخفي افتراضيًا. التواصل داخل سواب يحفظ خصوصيتك وحقك عند أي بلاغ.">
@@ -102,20 +101,22 @@ export function PrivacyForm({ initial }: { initial: { phone: string; showPhone: 
           start(async () => {
             const r = await updatePrivacy(v);
             if (r.ok) toast.success(r.message);
-            else { setErrors(r.fieldErrors ?? {}); toast.error(r.error); }
+            else toast.error(r.error);
           });
         }}
       >
-        <Field label="رقم الجوال" optional error={errors.phone} className="max-w-xs">
-          <Input dir="ltr" inputMode="tel" className="text-start" placeholder="05XXXXXXXX" value={v.phone} onChange={(e) => { setV({ ...v, phone: e.target.value.replace(/[^\d]/g, "").slice(0, 10) }); setErrors({}); }} />
-        </Field>
         <label className="flex items-center justify-between gap-4 rounded-xl border border-border p-4">
-          <span><span className="block text-sm font-medium">إظهار رقمي للمشترين المسجّلين</span><span className="block text-[13px] text-muted-foreground">يظهر زر «إظهار رقم الجوال» في إعلاناتك.</span></span>
-          <Switch checked={v.showPhone} onCheckedChange={(c) => setV({ ...v, showPhone: c })} />
+          <span>
+            <span className="block text-sm font-medium">إظهار رقمي الموثّق للمشترين المسجّلين</span>
+            <span className="block text-[13px] text-muted-foreground">
+              {maskedPhone ? <>يظهر زر «إظهار رقم الجوال» في إعلاناتك برقمك <bdi dir="ltr">{maskedPhone}</bdi>.</> : "وثّق رقم جوالك أولًا لتفعيل هذا الخيار."}
+            </span>
+          </span>
+          <Switch checked={v.showPhone} disabled={!maskedPhone} onCheckedChange={(c) => setV({ ...v, showPhone: c })} aria-label="إظهار رقمي الموثّق" />
         </label>
         <label className="flex items-center justify-between gap-4 rounded-xl border border-border p-4">
-          <span><span className="block text-sm font-medium">تنبيهات البريد الإلكتروني</span><span className="block text-[13px] text-muted-foreground">رسائل جديدة، عروض، ونزول أسعار المفضلة.</span></span>
-          <Switch checked={v.notifyEmail} onCheckedChange={(c) => setV({ ...v, notifyEmail: c })} />
+          <span><span className="block text-sm font-medium">تنبيهات البريد الإلكتروني</span><span className="block text-[13px] text-muted-foreground">رسائل جديدة، عروض، ونزول أسعار المفضلة (إذا أضفت بريدًا).</span></span>
+          <Switch checked={v.notifyEmail} onCheckedChange={(c) => setV({ ...v, notifyEmail: c })} aria-label="تنبيهات البريد الإلكتروني" />
         </label>
         <Button type="submit" loading={pending}>حفظ</Button>
       </form>
@@ -123,11 +124,21 @@ export function PrivacyForm({ initial }: { initial: { phone: string; showPhone: 
   );
 }
 
-export function SecurityForm() {
+export function SecurityForm({ hasPassword }: { hasPassword: boolean }) {
   const [cur, setCur] = useState("");
   const [next, setNext] = useState("");
   const [errors, setErrors] = useState<Errors>({});
   const [pending, start] = useTransition();
+  const signOutOthers = (
+    <Button type="button" variant="outline" onClick={() => start(async () => { const r = await signOutOtherSessions(); if (r.ok) toast.success(r.message); else toast.error(r.error); })}><LogOut />الخروج من الأجهزة الأخرى</Button>
+  );
+  if (!hasPassword) {
+    return (
+      <Card title="الأمان" description="تدخل إلى حسابك برمز يصلك في رسالة SMS — لا توجد كلمة مرور يمكن تسريبها. لا تشارك الرمز مع أي أحد.">
+        <div className="flex flex-wrap gap-2">{signOutOthers}</div>
+      </Card>
+    );
+  }
   return (
     <Card title="الأمان" description="غيّر كلمة المرور، أو سجّل الخروج من الأجهزة الأخرى.">
       <form
@@ -145,18 +156,20 @@ export function SecurityForm() {
         <Field label="كلمة المرور الجديدة" error={errors.next} hint="8 أحرف على الأقل، تتضمن حرفًا ورقمًا."><PasswordInput value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" /></Field>
         <div className="flex flex-wrap gap-2 sm:col-span-2">
           <Button type="submit" loading={pending} disabled={!cur || !next}><KeyRound />تغيير كلمة المرور</Button>
-          <Button type="button" variant="outline" onClick={() => start(async () => { const r = await signOutOtherSessions(); if (r.ok) toast.success(r.message); else toast.error(r.error); })}><LogOut />الخروج من الأجهزة الأخرى</Button>
+          {signOutOthers}
         </div>
       </form>
     </Card>
   );
 }
 
-export function DangerZone({ email }: { email: string }) {
+export function DangerZone({ email, hasPassword }: { email: string | null; hasPassword: boolean }) {
   const [confirm, setConfirm] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
+  const byPassword = hasPassword && !!email;
+  const ready = byPassword ? confirm.toLowerCase() === email!.toLowerCase() && !!password : confirm.trim() === "حذف حسابي";
   return (
     <Card title="حذف الحساب" description="يحذف حسابك وإعلاناتك ومحادثاتك نهائيًا. لا يمكن التراجع." danger>
       <Dialog>
@@ -164,15 +177,32 @@ export function DangerZone({ email }: { email: string }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>حذف الحساب نهائيًا</DialogTitle>
-            <DialogDescription>للتأكيد، اكتب بريدك <bdi className="font-semibold text-foreground">{email}</bdi> وكلمة المرور.</DialogDescription>
+            <DialogDescription>
+              {byPassword
+                ? <>للتأكيد، اكتب بريدك <bdi className="font-semibold text-foreground">{email}</bdi> وكلمة المرور.</>
+                : <>للتأكيد اكتب «حذف حسابي». لحماية حسابك يجب أن تكون سجّلت الدخول برمز SMS خلال آخر 15 دقيقة.</>}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Input dir="ltr" className="text-start" placeholder={email} value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-label="تأكيد البريد" />
-            <PasswordInput placeholder="كلمة المرور" value={password} onChange={(e) => setPassword(e.target.value)} aria-label="كلمة المرور" />
+            {byPassword ? (
+              <>
+                <Input dir="ltr" className="text-start" placeholder={email!} value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-label="تأكيد البريد" />
+                <PasswordInput placeholder="كلمة المرور" value={password} onChange={(e) => setPassword(e.target.value)} aria-label="كلمة المرور" />
+              </>
+            ) : (
+              <Input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="حذف حسابي" aria-label="اكتب حذف حسابي للتأكيد" />
+            )}
             {error && <p role="alert" className="text-[13px] text-danger">{error}</p>}
           </div>
           <DialogFooter>
-            <Button variant="destructive" loading={pending} disabled={confirm.toLowerCase() !== email.toLowerCase() || !password} onClick={() => start(async () => { const r = await deleteAccount({ confirmEmail: confirm, password }); if (!r.ok) setError(r.error); })}>حذف نهائي</Button>
+            <Button
+              variant="destructive"
+              loading={pending}
+              disabled={!ready}
+              onClick={() => start(async () => { const r = await deleteAccount(byPassword ? { confirmEmail: confirm, password } : { confirmText: confirm }); if (!r.ok) setError(r.error); })}
+            >
+              حذف نهائي
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

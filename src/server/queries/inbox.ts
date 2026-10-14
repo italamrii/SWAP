@@ -76,7 +76,7 @@ export async function getConversation(conversationId: string, userId: string) {
       buyerUsername: buyer.username,
       sellerName: seller.displayName,
       sellerUsername: seller.username,
-      sellerPhone: seller.phone,
+      sellerPhone: sql<string | null>`(select case when u.phone_verified_at is not null then u.phone end from users u where u.id = ${conversations.sellerId})`,
       sellerShowPhone: seller.showPhone,
     })
     .from(conversations)
@@ -99,6 +99,7 @@ export async function getMessages(conversationId: string, after?: Date) {
       senderId: messages.senderId,
       kind: messages.kind,
       body: messages.body,
+      guardCodes: messages.guardCodes,
       createdAt: messages.createdAt,
       offer: {
         id: offers.id,

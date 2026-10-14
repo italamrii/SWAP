@@ -164,7 +164,8 @@ export async function getListingBySlug(slug: string) {
       displayName: profiles.displayName,
       avatarUrl: profiles.avatarUrl,
       city: profiles.city,
-      phone: profiles.phone,
+      // Only a verified number can ever be shown publicly.
+      phone: sql<string | null>`case when ${users.phoneVerifiedAt} is not null then ${users.phone} end`,
       showPhone: profiles.showPhone,
       responseRate: profiles.responseRate,
       responseTimeMinutes: profiles.responseTimeMinutes,

@@ -10,7 +10,7 @@ export function UserMenu({
   user,
   counts,
 }: {
-  user: { displayName: string; username: string; avatarUrl: string | null; email: string; isStaff: boolean };
+  user: { displayName: string; username: string; avatarUrl: string | null; email: string | null; isStaff: boolean };
   counts: { messages: number; notifications: number; offers: number };
 }) {
   const badge = counts.messages + counts.offers;

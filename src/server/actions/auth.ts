@@ -17,41 +17,7 @@ import { emailSchema, passwordSchema, usernameSchema } from "@/lib/validation/au
 
 export type FormState = { ok?: boolean; error?: string; fieldErrors?: Record<string, string[] | undefined>; message?: string; values?: Record<string, string> };
 
-const signUpSchema = z.object({
-  displayName: z.string().trim().min(2, "الاسم قصير جدًا").max(40, "الاسم طويل"),
-  email: emailSchema,
-  password: passwordSchema,
-  terms: z.literal("on", { errorMap: () => ({ message: "يلزم الموافقة على الشروط وسياسة الخصوصية" }) }),
-});
-
-export async function signUp(_: FormState, form: FormData): Promise<FormState> {
-  const raw = Object.fromEntries(form) as Record<string, string>;
-  const values = { displayName: raw.displayName ?? "", email: raw.email ?? "" };
-  if (!(await rateLimit(`signup:${values.email}`, 5, 3600))) return { error: "محاولات كثيرة، حاول بعد قليل.", values };
-  const parsed = signUpSchema.safeParse(raw);
-  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, values };
-  const { displayName, email, password } = parsed.data;
-  if (isDemoEmail(email)) return { fieldErrors: { email: ["هذا النطاق مخصص لحسابات العرض"] }, values };
-
-  const [exists] = await db.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = ${email}`).limit(1);
-  if (exists) return { fieldErrors: { email: ["هذا البريد مسجّل مسبقًا. جرّب تسجيل الدخول."] }, values };
-
-  const passwordHash = await hashPassword(password);
-  const base = email.split("@")[0].toLowerCase().replace(/[^a-z0-9_.]/g, "").slice(0, 16) || "user";
-  const userId = await db.transaction(async (tx) => {
-    const [u] = await tx.insert(users).values({ email, passwordHash }).returning({ id: users.id });
-    let username = base.length >= 3 ? base : `${base}_swap`;
-    for (let i = 0; i < 5; i++) {
-      const [taken] = await tx.select({ u: profiles.username }).from(profiles).where(sql`lower(${profiles.username}) = ${username}`).limit(1);
-      if (!taken) break;
-      username = `${base}${Math.floor(100 + Math.random() * 900)}`;
-    }
-    await tx.insert(profiles).values({ userId: u.id, username, displayName });
-    return u.id;
-  });
-  await createSession(userId);
-  redirect("/onboarding");
-}
+// Public registration is phone-first (see ./phone-auth.ts). Email sign-in remains for accounts created before it.
 
 const signInSchema = z.object({ email: emailSchema, password: z.string().min(1, "أدخل كلمة المرور") });
 
@@ -66,7 +32,8 @@ export async function signIn(_: FormState, form: FormData): Promise<FormState> {
 
   const [u] = await db.select().from(users).where(sql`lower(${users.email}) = ${email}`).limit(1);
   // Constant-ish time: always run a hash verification.
-  const valid = u ? await verifyPassword(password, u.passwordHash) : (await hashPassword(password), false);
+  // Phone-only accounts have no password; they behave exactly like an unknown email here.
+  const valid = u?.passwordHash ? await verifyPassword(password, u.passwordHash) : (await hashPassword(password), false);
   if (!u || !valid) return { error: "البريد الإلكتروني أو كلمة المرور غير صحيحة", values };
   if (u.status === "banned") return { error: "هذا الحساب محظور لمخالفته شروط الاستخدام.", values };
 

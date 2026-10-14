@@ -18,5 +18,14 @@ const CREDENTIALS: Record<string, { email: string; password: string }> = {
   hind: { email: "hind@swap.example", password: "Seller@12345" },
 };
 
-export type SeedUser = SampleProfile & { email: string; password: string };
-export const SEED_USERS: SeedUser[] = SAMPLE_PROFILES.map((p) => ({ ...p, ...CREDENTIALS[p.key] }));
+/**
+ * Verified Saudi numbers for the fictional people (local/CI only — demo accounts are blocked in
+ * public production and the app refuses to text these numbers through a paid provider).
+ * "demo" stays email-only on purpose: it represents an existing account that must still verify a number.
+ */
+const VERIFIED_PHONES: Record<string, string> = Object.fromEntries(
+  Object.keys(CREDENTIALS).filter((k) => k !== "demo").map((k, i) => [k, `+9665000001${String(i + 1).padStart(2, "0")}`]),
+);
+
+export type SeedUser = SampleProfile & { email: string; password: string; verifiedPhone?: string };
+export const SEED_USERS: SeedUser[] = SAMPLE_PROFILES.map((p) => ({ ...p, ...CREDENTIALS[p.key], verifiedPhone: VERIFIED_PHONES[p.key] }));
